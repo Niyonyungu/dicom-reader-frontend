@@ -5,11 +5,14 @@ import { useWorklist } from '@/context/worklist-context';
 import { usePatients } from '@/context/patients-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, Users, FileText, Zap } from 'lucide-react';
+import { useRealTimeClock } from '@/hooks/use-real-time-clock';
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const { worklist } = useWorklist();
   const { patients } = usePatients();
+
+  const { date, time } = useRealTimeClock();
 
   const recentStudies = worklist.slice(0, 5);
   const completedStudies = worklist.filter((w) => w.status === 'completed').length;
@@ -49,6 +52,9 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold text-foreground">
           Welcome back, {user?.name}
         </h1>
+        <p className="text-xs text-muted-foreground">
+          {date} {time}
+        </p>
         <p className="text-muted-foreground mt-2">
           Here's what's happening with your medical imaging system today.
         </p>
@@ -109,13 +115,12 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          study.status === 'completed'
+                        className={`px-3 py-1 rounded-full text-xs font-medium ${study.status === 'completed'
                             ? 'bg-accent/20 text-accent'
                             : study.status === 'ongoing'
-                            ? 'bg-secondary/20 text-secondary'
-                            : 'bg-muted/20 text-muted-foreground'
-                        }`}
+                              ? 'bg-secondary/20 text-secondary'
+                              : 'bg-muted/20 text-muted-foreground'
+                          }`}
                       >
                         {study.status.charAt(0).toUpperCase() +
                           study.status.slice(1)}

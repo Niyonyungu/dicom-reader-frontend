@@ -4,6 +4,7 @@ import { WorklistItem } from '@/lib/mock-data';
 import { Button } from '@/components/ui/button';
 import { Eye } from 'lucide-react';
 import Link from 'next/link';
+import { useReports } from '@/context/reports-context';
 
 interface WorklistTableProps {
   items: WorklistItem[];
@@ -46,6 +47,8 @@ export function WorklistTable({ items }: WorklistTableProps) {
     );
   }
 
+  const { getReportsByWorklist } = useReports();
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -74,6 +77,9 @@ export function WorklistTable({ items }: WorklistTableProps) {
             </th>
             <th className="px-4 py-3 text-left font-semibold text-foreground">
               Status
+            </th>
+            <th className="px-4 py-3 text-left font-semibold text-foreground">
+              Report
             </th>
             <th className="px-4 py-3 text-left font-semibold text-foreground">
               Action
@@ -115,6 +121,17 @@ export function WorklistTable({ items }: WorklistTableProps) {
                 >
                   {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
                 </span>
+              </td>
+              <td className="px-4 py-3">
+                {getReportsByWorklist(item.id) ? (
+                  <Link href={`/dashboard/reports`}>
+                    <span className="text-primary hover:underline text-xs">
+                      Yes
+                    </span>
+                  </Link>
+                ) : (
+                  <span className="text-muted-foreground text-xs">No</span>
+                )}
               </td>
               <td className="px-4 py-3">
                 <Link href={`/dashboard/viewer/${item.id}`}>

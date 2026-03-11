@@ -18,6 +18,14 @@ export default function ViewerPage() {
   const worklistItem = getWorklistItem(worklistId);
   const patient = worklistItem ? getPatient(worklistItem.patientId) : null;
 
+  const seriesList = worklistItem
+    ? Array.from(new Set(worklistItem.images.map((i) => i.seriesDescription)))
+    : [];
+
+  const imageInstances = worklistItem
+    ? worklistItem.images.map((i) => i.instanceNumber).join(', ')
+    : '';
+
   if (!worklistItem || !patient) {
     return (
       <div className="p-8">
@@ -125,6 +133,18 @@ export default function ViewerPage() {
                 <p className="font-semibold text-foreground text-sm">{worklistItem.id}</p>
               </div>
               <div>
+                <p className="text-xs text-muted-foreground">Series</p>
+                <p className="font-semibold text-foreground text-sm">
+                  {seriesList.join(', ')}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Instances</p>
+                <p className="font-semibold text-foreground text-sm">
+                  {imageInstances}
+                </p>
+              </div>
+              <div>
                 <p className="text-xs text-muted-foreground">Modality</p>
                 <div className="mt-1">
                   <span className="px-2 py-1 rounded text-xs font-medium bg-primary/20 text-primary">
@@ -148,13 +168,12 @@ export default function ViewerPage() {
                 <p className="text-xs text-muted-foreground">Status</p>
                 <div className="mt-1">
                   <span
-                    className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      worklistItem.status === 'completed'
+                    className={`px-2 py-1 rounded-full text-xs font-medium ${worklistItem.status === 'completed'
                         ? 'bg-accent/20 text-accent'
                         : worklistItem.status === 'ongoing'
-                        ? 'bg-secondary/20 text-secondary'
-                        : 'bg-primary/20 text-primary'
-                    }`}
+                          ? 'bg-secondary/20 text-secondary'
+                          : 'bg-primary/20 text-primary'
+                      }`}
                   >
                     {worklistItem.status.charAt(0).toUpperCase() +
                       worklistItem.status.slice(1)}

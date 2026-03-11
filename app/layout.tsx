@@ -11,21 +11,9 @@ export const metadata: Metadata = {
   title: 'DICOM Reader',
   description: 'Professional Medical DICOM Viewer',
   generator: 'v0.app',
+  // replace these paths with your own favicon files (put them in public/)
   icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
+    icon: '/favicon.ico',
     apple: '/apple-icon.png',
   },
 }

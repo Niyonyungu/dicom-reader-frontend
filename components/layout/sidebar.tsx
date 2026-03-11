@@ -42,10 +42,10 @@ const navItems: NavItem[] = [
     icon: Upload,
   },
   {
+    // reports should be accessible to everyone, not just admin/service
     href: '/dashboard/reports',
     label: 'Reports',
     icon: FileText,
-    roles: ['admin', 'service'],
   },
   {
     href: '/dashboard/settings',
@@ -82,7 +82,10 @@ export function Sidebar() {
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
         {visibleItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+          // make the dashboard item active only on exactly /dashboard, not every subroute
+          const isActive =
+            pathname === item.href ||
+            (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'));
 
           return (
             <Link

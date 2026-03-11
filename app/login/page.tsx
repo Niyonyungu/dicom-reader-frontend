@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRealTimeClock } from '@/hooks/use-real-time-clock';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const { time, date } = useRealTimeClock();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,6 +62,10 @@ export default function LoginPage() {
           </div>
           <h1 className="text-3xl font-bold text-foreground">DICOM Reader</h1>
           <p className="text-muted-foreground">Medical Image Viewer</p>
+          {/* real time clock */}
+          <p className="text-xs text-muted-foreground mt-1">
+            {date} {time}
+          </p>
         </div>
 
         {/* Login Form */}
