@@ -111,6 +111,20 @@ export default function ViewerPage() {
                   <p className="font-semibold text-foreground">{patient.gender}</p>
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">Weight</p>
+                  <p className="font-semibold text-foreground">
+                    {patient.weightKg ? `${patient.weightKg} kg` : '-'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Height</p>
+                  <p className="font-semibold text-foreground">
+                    {patient.heightCm ? `${patient.heightCm} cm` : '-'}
+                  </p>
+                </div>
+              </div>
               <div>
                 <p className="text-xs text-muted-foreground">DOB</p>
                 <p className="font-semibold text-foreground">{patient.dob}</p>
@@ -160,6 +174,22 @@ export default function ViewerPage() {
                 <p className="text-xs text-muted-foreground">Study Time</p>
                 <p className="font-semibold text-foreground">{worklistItem.studyTime}</p>
               </div>
+              {worklistItem.referringPhysician && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Referring</p>
+                  <p className="font-semibold text-foreground text-sm">
+                    {worklistItem.referringPhysician}
+                  </p>
+                </div>
+              )}
+              {worklistItem.details && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Details</p>
+                  <p className="font-semibold text-foreground text-sm">
+                    {worklistItem.details}
+                  </p>
+                </div>
+              )}
               <div>
                 <p className="text-xs text-muted-foreground">Images</p>
                 <p className="font-semibold text-foreground">{worklistItem.imageCount}</p>
@@ -169,10 +199,10 @@ export default function ViewerPage() {
                 <div className="mt-1">
                   <span
                     className={`px-2 py-1 rounded-full text-xs font-medium ${worklistItem.status === 'completed'
-                        ? 'bg-accent/20 text-accent'
-                        : worklistItem.status === 'ongoing'
-                          ? 'bg-secondary/20 text-secondary'
-                          : 'bg-primary/20 text-primary'
+                      ? 'bg-accent/20 text-accent'
+                      : worklistItem.status === 'ongoing'
+                        ? 'bg-secondary/20 text-secondary'
+                        : 'bg-primary/20 text-primary'
                       }`}
                   >
                     {worklistItem.status.charAt(0).toUpperCase() +

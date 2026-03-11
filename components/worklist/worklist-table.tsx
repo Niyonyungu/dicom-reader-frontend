@@ -73,6 +73,9 @@ export function WorklistTable({ items }: WorklistTableProps) {
               Description
             </th>
             <th className="px-4 py-3 text-left font-semibold text-foreground">
+              Referring
+            </th>
+            <th className="px-4 py-3 text-left font-semibold text-foreground">
               Images
             </th>
             <th className="px-4 py-3 text-left font-semibold text-foreground">
@@ -108,7 +111,15 @@ export function WorklistTable({ items }: WorklistTableProps) {
               <td className="px-4 py-3 text-foreground">{item.studyDate}</td>
               <td className="px-4 py-3 text-foreground">{item.studyTime}</td>
               <td className="px-4 py-3 text-foreground text-xs max-w-xs truncate">
-                {item.description}
+                <div>{item.description}</div>
+                {item.details && (
+                  <div className="text-xs text-muted-foreground mt-1 truncate">
+                    {item.details}
+                  </div>
+                )}
+              </td>
+              <td className="px-4 py-3 text-foreground">
+                {item.referringPhysician || '-'}
               </td>
               <td className="px-4 py-3 text-foreground text-center">
                 {item.imageCount}

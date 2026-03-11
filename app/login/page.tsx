@@ -61,12 +61,24 @@ export default function LoginPage() {
             </div>
           </div>
           <h1 className="text-3xl font-bold text-foreground">DICOM Reader</h1>
-          <p className="text-muted-foreground">Medical Image Viewer</p>
+          <p className="text-muted-foreground">Professional medical imaging platform</p>
           {/* real time clock */}
           <p className="text-xs text-muted-foreground mt-1">
             {date} {time}
           </p>
         </div>
+        {/* Features overview */}
+        <Card className="border-border bg-card/50">
+          <CardContent className="text-left">
+            <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+              <li>Upload and view DICOM studies</li>
+              <li>Filter worklists by status and modality</li>
+              <li>Generate and export radiology reports</li>
+              <li>Manage patient records with demographics</li>
+              <li>Responsive dashboard with quick stats</li>
+            </ul>
+          </CardContent>
+        </Card>
 
         {/* Login Form */}
         <Card className="border-border">
