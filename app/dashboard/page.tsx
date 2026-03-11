@@ -111,10 +111,10 @@ export default function DashboardPage() {
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-medium ${
                           study.status === 'completed'
-                            ? 'bg-green-500/20 text-green-700 dark:text-green-400'
+                            ? 'bg-accent/20 text-accent'
                             : study.status === 'ongoing'
-                            ? 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400'
-                            : 'bg-gray-500/20 text-gray-700 dark:text-gray-400'
+                            ? 'bg-secondary/20 text-secondary'
+                            : 'bg-muted/20 text-muted-foreground'
                         }`}
                       >
                         {study.status.charAt(0).toUpperCase() +
