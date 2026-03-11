@@ -1,0 +1,113 @@
+'use client';
+
+import { useAuth } from '@/context/auth-context';
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
+import { cn } from '@/lib/utils';
+import {
+  ListTodo,
+  Users,
+  Upload,
+  FileText,
+  Settings,
+  BarChart3,
+} from 'lucide-react';
+
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  roles?: ('user' | 'admin' | 'service')[];
+}
+
+const navItems: NavItem[] = [
+  {
+    href: '/dashboard',
+    label: 'Dashboard',
+    icon: BarChart3,
+  },
+  {
+    href: '/dashboard/worklist',
+    label: 'Worklist',
+    icon: ListTodo,
+  },
+  {
+    href: '/dashboard/patients',
+    label: 'Patients',
+    icon: Users,
+  },
+  {
+    href: '/dashboard/upload',
+    label: 'Upload DICOM',
+    icon: Upload,
+  },
+  {
+    href: '/dashboard/reports',
+    label: 'Reports',
+    icon: FileText,
+    roles: ['admin', 'service'],
+  },
+  {
+    href: '/dashboard/settings',
+    label: 'Settings',
+    icon: Settings,
+  },
+];
+
+export function Sidebar() {
+  const { user } = useAuth();
+  const pathname = usePathname();
+
+  const visibleItems = navItems.filter((item) => {
+    if (!item.roles) return true;
+    return user && item.roles.includes(user.role);
+  });
+
+  return (
+    <aside className="w-64 border-r border-sidebar-border bg-sidebar flex flex-col h-full">
+      {/* Logo Section */}
+      <div className="p-6 border-b border-sidebar-border">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-sidebar-primary">
+            <BarChart3 className="h-5 w-5 text-sidebar-primary-foreground" />
+          </div>
+          <div>
+            <h2 className="font-bold text-sidebar-foreground">DICOM</h2>
+            <p className="text-xs text-sidebar-foreground/60">Medical Imaging</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+        {visibleItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors',
+                isActive
+                  ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+                  : 'text-sidebar-foreground hover:bg-sidebar-accent'
+              )}
+            >
+              <Icon className="h-5 w-5 flex-shrink-0" />
+              <span className="text-sm font-medium">{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Footer */}
+      <div className="p-4 border-t border-sidebar-border">
+        <p className="text-xs text-sidebar-foreground/60 text-center">
+          Version 1.0.0
+        </p>
+      </div>
+    </aside>
+  );
+}

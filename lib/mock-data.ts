@@ -1,0 +1,368 @@
+export interface User {
+  id: number;
+  username: string;
+  password: string;
+  role: 'user' | 'admin' | 'service';
+  name: string;
+}
+
+export interface Patient {
+  id: string;
+  name: string;
+  age: number;
+  gender: 'M' | 'F' | 'O';
+  dob: string;
+  contactInfo: string;
+  email?: string;
+  createdAt: string;
+}
+
+export interface WorklistItem {
+  id: string;
+  patientId: string;
+  patientName: string;
+  studyDate: string;
+  studyTime: string;
+  modality: 'MRI' | 'CT' | 'XR' | 'US';
+  description: string;
+  status: 'new' | 'ongoing' | 'completed';
+  imageCount: number;
+  images: DicomImage[];
+}
+
+export interface DicomImage {
+  id: string;
+  instanceNumber: number;
+  filename: string;
+  seriesDescription: string;
+  sliceThickness?: string;
+  windowCenter?: number;
+  windowWidth?: number;
+}
+
+export interface Report {
+  id: string;
+  patientId: string;
+  worklistId: string;
+  radiologist: string;
+  findings: string;
+  impression: string;
+  recommendations?: string;
+  createdAt: string;
+  status: 'draft' | 'completed' | 'signed';
+}
+
+// Mock Users
+export const mockUsers: User[] = [
+  {
+    id: 1,
+    username: 'user1',
+    password: 'pass123',
+    role: 'user',
+    name: 'Dr. John Smith'
+  },
+  {
+    id: 2,
+    username: 'admin1',
+    password: 'admin123',
+    role: 'admin',
+    name: 'Admin User'
+  },
+  {
+    id: 3,
+    username: 'service1',
+    password: 'service123',
+    role: 'service',
+    name: 'Service Account'
+  }
+];
+
+// Mock Patients
+export const mockPatients: Patient[] = [
+  {
+    id: 'P001',
+    name: 'John Doe',
+    age: 45,
+    gender: 'M',
+    dob: '1979-05-15',
+    contactInfo: '555-0101',
+    email: 'john.doe@email.com',
+    createdAt: '2025-01-10'
+  },
+  {
+    id: 'P002',
+    name: 'Jane Smith',
+    age: 38,
+    gender: 'F',
+    dob: '1987-08-22',
+    contactInfo: '555-0102',
+    email: 'jane.smith@email.com',
+    createdAt: '2025-01-12'
+  },
+  {
+    id: 'P003',
+    name: 'Robert Johnson',
+    age: 62,
+    gender: 'M',
+    dob: '1963-03-10',
+    contactInfo: '555-0103',
+    email: 'robert.j@email.com',
+    createdAt: '2025-01-15'
+  },
+  {
+    id: 'P004',
+    name: 'Maria Garcia',
+    age: 51,
+    gender: 'F',
+    dob: '1974-12-05',
+    contactInfo: '555-0104',
+    email: 'maria.garcia@email.com',
+    createdAt: '2025-02-01'
+  },
+  {
+    id: 'P005',
+    name: 'Michael Chen',
+    age: 35,
+    gender: 'M',
+    dob: '1990-07-18',
+    contactInfo: '555-0105',
+    email: 'm.chen@email.com',
+    createdAt: '2025-02-10'
+  }
+];
+
+// Mock Worklist
+export const mockWorklist: WorklistItem[] = [
+  {
+    id: 'W001',
+    patientId: 'P001',
+    patientName: 'John Doe',
+    studyDate: '2026-03-10',
+    studyTime: '09:30',
+    modality: 'MRI',
+    description: 'Brain MRI with Contrast',
+    status: 'completed',
+    imageCount: 45,
+    images: [
+      {
+        id: 'IMG001',
+        instanceNumber: 1,
+        filename: 'IMG_001.dcm',
+        seriesDescription: 'T1 Sagittal',
+        sliceThickness: '2.0mm',
+        windowCenter: 40,
+        windowWidth: 400
+      },
+      {
+        id: 'IMG002',
+        instanceNumber: 2,
+        filename: 'IMG_002.dcm',
+        seriesDescription: 'T1 Sagittal',
+        sliceThickness: '2.0mm',
+        windowCenter: 40,
+        windowWidth: 400
+      },
+      {
+        id: 'IMG003',
+        instanceNumber: 3,
+        filename: 'IMG_003.dcm',
+        seriesDescription: 'T1 Sagittal',
+        sliceThickness: '2.0mm',
+        windowCenter: 40,
+        windowWidth: 400
+      }
+    ]
+  },
+  {
+    id: 'W002',
+    patientId: 'P002',
+    patientName: 'Jane Smith',
+    studyDate: '2026-03-10',
+    studyTime: '10:15',
+    modality: 'CT',
+    description: 'Chest CT',
+    status: 'completed',
+    imageCount: 120,
+    images: [
+      {
+        id: 'IMG101',
+        instanceNumber: 1,
+        filename: 'IMG_101.dcm',
+        seriesDescription: 'Chest - Lung Window',
+        sliceThickness: '1.0mm',
+        windowCenter: -400,
+        windowWidth: 1500
+      },
+      {
+        id: 'IMG102',
+        instanceNumber: 2,
+        filename: 'IMG_102.dcm',
+        seriesDescription: 'Chest - Lung Window',
+        sliceThickness: '1.0mm',
+        windowCenter: -400,
+        windowWidth: 1500
+      }
+    ]
+  },
+  {
+    id: 'W003',
+    patientId: 'P003',
+    patientName: 'Robert Johnson',
+    studyDate: '2026-03-09',
+    studyTime: '14:45',
+    modality: 'XR',
+    description: 'Chest X-Ray PA and Lateral',
+    status: 'completed',
+    imageCount: 2,
+    images: [
+      {
+        id: 'IMG201',
+        instanceNumber: 1,
+        filename: 'IMG_201.dcm',
+        seriesDescription: 'Chest PA',
+        windowCenter: 40,
+        windowWidth: 400
+      },
+      {
+        id: 'IMG202',
+        instanceNumber: 2,
+        filename: 'IMG_202.dcm',
+        seriesDescription: 'Chest Lateral',
+        windowCenter: 40,
+        windowWidth: 400
+      }
+    ]
+  },
+  {
+    id: 'W004',
+    patientId: 'P004',
+    patientName: 'Maria Garcia',
+    studyDate: '2026-03-09',
+    studyTime: '11:20',
+    modality: 'US',
+    description: 'Abdominal Ultrasound',
+    status: 'ongoing',
+    imageCount: 25,
+    images: [
+      {
+        id: 'IMG301',
+        instanceNumber: 1,
+        filename: 'IMG_301.dcm',
+        seriesDescription: 'Liver',
+        sliceThickness: '0.5mm'
+      },
+      {
+        id: 'IMG302',
+        instanceNumber: 2,
+        filename: 'IMG_302.dcm',
+        seriesDescription: 'Liver',
+        sliceThickness: '0.5mm'
+      }
+    ]
+  },
+  {
+    id: 'W005',
+    patientId: 'P005',
+    patientName: 'Michael Chen',
+    studyDate: '2026-03-11',
+    studyTime: '08:00',
+    modality: 'MRI',
+    description: 'Knee MRI',
+    status: 'new',
+    imageCount: 60,
+    images: [
+      {
+        id: 'IMG401',
+        instanceNumber: 1,
+        filename: 'IMG_401.dcm',
+        seriesDescription: 'T2 Sagittal',
+        sliceThickness: '3.0mm'
+      }
+    ]
+  },
+  {
+    id: 'W006',
+    patientId: 'P001',
+    patientName: 'John Doe',
+    studyDate: '2026-03-08',
+    studyTime: '16:30',
+    modality: 'CT',
+    description: 'Abdomen and Pelvis CT',
+    status: 'completed',
+    imageCount: 150,
+    images: []
+  },
+  {
+    id: 'W007',
+    patientId: 'P002',
+    patientName: 'Jane Smith',
+    studyDate: '2026-03-07',
+    studyTime: '13:00',
+    modality: 'XR',
+    description: 'Hand X-Ray',
+    status: 'completed',
+    imageCount: 3,
+    images: []
+  },
+  {
+    id: 'W008',
+    patientId: 'P003',
+    patientName: 'Robert Johnson',
+    studyDate: '2026-03-06',
+    studyTime: '10:00',
+    modality: 'MRI',
+    description: 'Lumbar Spine MRI',
+    status: 'completed',
+    imageCount: 80,
+    images: []
+  },
+  {
+    id: 'W009',
+    patientId: 'P004',
+    patientName: 'Maria Garcia',
+    studyDate: '2026-03-05',
+    studyTime: '09:45',
+    modality: 'US',
+    description: 'Thyroid Ultrasound',
+    status: 'completed',
+    imageCount: 12,
+    images: []
+  },
+  {
+    id: 'W010',
+    patientId: 'P005',
+    patientName: 'Michael Chen',
+    studyDate: '2026-03-04',
+    studyTime: '15:15',
+    modality: 'CT',
+    description: 'Head CT',
+    status: 'completed',
+    imageCount: 60,
+    images: []
+  }
+];
+
+// Mock Reports
+export const mockReports: Report[] = [
+  {
+    id: 'R001',
+    patientId: 'P001',
+    worklistId: 'W001',
+    radiologist: 'Dr. John Smith',
+    findings: 'No acute abnormality identified. Brain parenchyma demonstrates normal signal intensity.',
+    impression: 'Normal brain MRI.',
+    recommendations: 'Clinical correlation recommended.',
+    createdAt: '2026-03-10T10:30:00Z',
+    status: 'completed'
+  },
+  {
+    id: 'R002',
+    patientId: 'P002',
+    worklistId: 'W002',
+    radiologist: 'Dr. John Smith',
+    findings: 'Mild bibasilar atelectasis. No focal consolidation. Heart size normal.',
+    impression: 'Mild bibasilar atelectasis. No pneumonia.',
+    createdAt: '2026-03-10T11:00:00Z',
+    status: 'completed'
+  }
+];
