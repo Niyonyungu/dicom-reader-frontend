@@ -11,10 +11,56 @@ export async function exportReportAsPDF(
     element.innerHTML = htmlContent;
     element.style.padding = '20px';
 
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      backgroundColor: '#ffffff',
-    });
+    // html2canvas needs the element to be in the document to correctly
+    // resolve styles and cloned nodes (iframes, fonts, etc.). Render the
+    // content offscreen, capture it, then remove the container.
+    const container = document.createElement('div');
+    container.style.position = 'absolute';
+    container.style.left = '-10000px';
+    container.style.top = '0';
+    container.style.width = '800px';
+    container.appendChild(element);
+    document.body.appendChild(container);
+
+    // sanitize any lab() color values in computed styles by converting them
+    // to an equivalent rgb string. html2canvas doesn't support lab() and will
+    // throw when it encounters one.
+    function resolveLabColor(color: string) {
+      const dummy = document.createElement('div');
+      dummy.style.color = color;
+      dummy.style.position = 'absolute';
+      dummy.style.left = '-9999px';
+      document.body.appendChild(dummy);
+      const computed = getComputedStyle(dummy).color;
+      document.body.removeChild(dummy);
+      return computed;
+    }
+
+    function sanitizeElement(el: HTMLElement) {
+      const cs = getComputedStyle(el);
+      for (const prop of Array.from(cs)) {
+        const val = cs.getPropertyValue(prop);
+        if (val.includes('lab(')) {
+          const rgb = resolveLabColor(val);
+          el.style.setProperty(prop, rgb, cs.getPropertyPriority(prop));
+        }
+      }
+      Array.from(el.children as HTMLCollectionOf<HTMLElement>).forEach(sanitizeElement);
+    }
+
+    sanitizeElement(element);
+
+    let canvas;
+    try {
+      canvas = await html2canvas(element, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+      });
+    } finally {
+      // Clean up the offscreen container whether html2canvas succeeded or not
+      if (container && container.parentNode) container.parentNode.removeChild(container);
+    }
 
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({
@@ -63,16 +109,24 @@ export async function exportReportAsDocx(
         {
           children: [
             new Paragraph({
-              text: 'MEDICAL IMAGING REPORT',
-              bold: true,
-              size: 28,
+              children: [
+                new TextRun({
+                  text: 'MEDICAL IMAGING REPORT',
+                  bold: true,
+                  size: 28,
+                }),
+              ],
               alignment: AlignmentType.CENTER,
               spacing: { after: 400 },
             }),
             new Paragraph({
-              text: 'Patient Information',
-              bold: true,
-              size: 24,
+              children: [
+                new TextRun({
+                  text: 'Patient Information',
+                  bold: true,
+                  size: 24,
+                }),
+              ],
               spacing: { after: 200 },
             }),
             new Table({
@@ -103,9 +157,13 @@ export async function exportReportAsDocx(
               ],
             }),
             new Paragraph({
-              text: 'Study Information',
-              bold: true,
-              size: 24,
+              children: [
+                new TextRun({
+                  text: 'Study Information',
+                  bold: true,
+                  size: 24,
+                }),
+              ],
               spacing: { before: 400, after: 200 },
             }),
             new Table({
@@ -136,27 +194,43 @@ export async function exportReportAsDocx(
               ],
             }),
             new Paragraph({
-              text: 'Findings',
-              bold: true,
-              size: 24,
+              children: [
+                new TextRun({
+                  text: 'Findings',
+                  bold: true,
+                  size: 24,
+                }),
+              ],
               spacing: { before: 400, after: 200 },
             }),
             new Paragraph(data.findings || 'No findings reported'),
             new Paragraph({
-              text: 'Impression',
-              bold: true,
-              size: 24,
+              children: [
+                new TextRun({
+                  text: 'Impression',
+                  bold: true,
+                  size: 24,
+                }),
+              ],
               spacing: { before: 400, after: 200 },
             }),
             new Paragraph(data.impression || 'No impression provided'),
             new Paragraph({
-              text: 'Radiologist: ' + data.radiologist,
+              children: [
+                new TextRun({
+                  text: 'Radiologist: ' + data.radiologist,
+                  italics: true,
+                }),
+              ],
               spacing: { before: 400 },
-              italics: true,
             }),
             new Paragraph({
-              text: 'Date: ' + new Date().toLocaleDateString(),
-              italics: true,
+              children: [
+                new TextRun({
+                  text: 'Date: ' + new Date().toLocaleDateString(),
+                  italics: true,
+                }),
+              ],
             }),
           ],
         },

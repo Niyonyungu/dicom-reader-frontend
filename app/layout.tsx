@@ -4,8 +4,8 @@ import { Analytics } from '@vercel/analytics/next'
 import { Providers } from '@/components/providers'
 import './globals.css'
 
-Geist({ subsets: ["latin"] });
-Geist_Mono({ subsets: ["latin"] });
+const geist = Geist({ subsets: ["latin"] });
+const geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: 'DICOM Reader',
@@ -37,7 +37,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className="dark">
-      <body className="font-sans antialiased bg-background text-foreground">
+      <body className={`font-sans antialiased bg-background text-foreground ${geist.className} ${geistMono.className}`}>
         <Providers>
           {children}
         </Providers>

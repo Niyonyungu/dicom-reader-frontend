@@ -22,14 +22,14 @@ export function DicomUploadArea({ onFilesSelected }: DicomUploadAreaProps) {
   const [uploadFiles, setUploadFiles] = useState<UploadFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const validateFile = (file: File): string | null => {
+  const validateFile = (file: File): string | undefined => {
     if (!file.name.toLowerCase().endsWith('.dcm')) {
       return 'Only .dcm files are supported';
     }
     if (file.size > 100 * 1024 * 1024) {
       return 'File size must be less than 100MB';
     }
-    return null;
+    return undefined;
   };
 
   const handleFiles = (files: FileList) => {
@@ -48,9 +48,15 @@ export function DicomUploadArea({ onFilesSelected }: DicomUploadAreaProps) {
     setUploadFiles((prev) => [...prev, ...newFiles]);
 
     // Simulate upload
-    newFiles.forEach((uploadFile, index) => {
+    newFiles.forEach((uploadFile) => {
       if (!uploadFile.error) {
-        simulateUpload(prev: [...uploadFile]);
+        // mark as uploading then start simulated upload
+        setUploadFiles((prev) =>
+          prev.map((f) =>
+            f.file === uploadFile.file ? { ...f, status: 'uploading' } : f
+          )
+        );
+        simulateUpload(uploadFile);
       }
     });
   };
