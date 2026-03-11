@@ -75,7 +75,7 @@ export default function SettingsPage() {
                   Last changed on your first login
                 </p>
               </div>
-              <p className="text-xs bg-green-500/20 text-green-700 dark:text-green-400 px-2 py-1 rounded">
+              <p className="text-xs bg-accent/20 text-accent px-2 py-1 rounded">
                 Secure
               </p>
             </div>
@@ -88,7 +88,7 @@ export default function SettingsPage() {
                   Not currently enabled
                 </p>
               </div>
-              <p className="text-xs bg-gray-500/20 text-gray-700 dark:text-gray-400 px-2 py-1 rounded">
+              <p className="text-xs bg-muted/20 text-muted-foreground px-2 py-1 rounded">
                 Available
               </p>
             </div>

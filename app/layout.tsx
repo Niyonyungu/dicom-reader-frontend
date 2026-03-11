@@ -1,10 +1,7 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
-import { AuthProvider } from '@/context/auth-context'
-import { WorklistProvider } from '@/context/worklist-context'
-import { PatientsProvider } from '@/context/patients-context'
-import { ReportsProvider } from '@/context/reports-context'
+import { Providers } from '@/components/providers'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -41,15 +38,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased bg-background text-foreground dark">
-        <AuthProvider>
-          <WorklistProvider>
-            <PatientsProvider>
-              <ReportsProvider>
-                {children}
-              </ReportsProvider>
-            </PatientsProvider>
-          </WorklistProvider>
-        </AuthProvider>
+        <Providers>
+          {children}
+        </Providers>
         <Analytics />
       </body>
     </html>

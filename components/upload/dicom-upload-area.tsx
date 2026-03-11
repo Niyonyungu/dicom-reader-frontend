@@ -207,7 +207,7 @@ export function DicomUploadArea({ onFilesSelected }: DicomUploadAreaProps) {
                 <div className="flex items-start gap-4">
                   <div className="flex-shrink-0 mt-1">
                     {uploadFile.status === 'success' && (
-                      <FileCheck className="h-5 w-5 text-green-500" />
+                      <FileCheck className="h-5 w-5 text-accent" />
                     )}
                     {uploadFile.status === 'error' && (
                       <AlertCircle className="h-5 w-5 text-destructive" />

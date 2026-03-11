@@ -150,10 +150,10 @@ export default function ViewerPage() {
                   <span
                     className={`px-2 py-1 rounded-full text-xs font-medium ${
                       worklistItem.status === 'completed'
-                        ? 'bg-green-500/20 text-green-700 dark:text-green-400'
+                        ? 'bg-accent/20 text-accent'
                         : worklistItem.status === 'ongoing'
-                        ? 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400'
-                        : 'bg-blue-500/20 text-blue-700 dark:text-blue-400'
+                        ? 'bg-secondary/20 text-secondary'
+                        : 'bg-primary/20 text-primary'
                     }`}
                   >
                     {worklistItem.status.charAt(0).toUpperCase() +

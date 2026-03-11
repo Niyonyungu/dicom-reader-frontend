@@ -20,25 +20,25 @@ export default function DashboardPage() {
       title: 'Total Patients',
       value: patients.length.toString(),
       icon: Users,
-      color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+      color: 'bg-primary/10 text-primary',
     },
     {
       title: 'Total Studies',
       value: worklist.length.toString(),
       icon: FileText,
-      color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
+      color: 'bg-secondary/10 text-secondary',
     },
     {
       title: 'Completed',
       value: completedStudies.toString(),
       icon: Activity,
-      color: 'bg-green-500/10 text-green-600 dark:text-green-400',
+      color: 'bg-accent/10 text-accent',
     },
     {
       title: 'In Progress',
       value: ongoingStudies.toString(),
       icon: Zap,
-      color: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
+      color: 'bg-primary/10 text-primary dark:text-primary',
     },
   ];
 

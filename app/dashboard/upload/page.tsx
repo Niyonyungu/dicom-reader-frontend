@@ -74,18 +74,18 @@ export default function UploadPage() {
 
       {/* Success Alert */}
       {uploadSuccess && (
-        <Alert className="border-green-500/50 bg-green-500/10">
-          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-          <AlertDescription className="text-green-700 dark:text-green-400 ml-2">
+        <Alert className="border-accent/50 bg-accent/10">
+          <CheckCircle className="h-4 w-4 text-accent" />
+          <AlertDescription className="text-accent ml-2">
             {successMessage}
           </AlertDescription>
         </Alert>
       )}
 
       {/* Info Alert */}
-      <Alert className="border-blue-500/50 bg-blue-500/10">
-        <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-        <AlertDescription className="text-blue-700 dark:text-blue-400 ml-2">
+      <Alert className="border-primary/50 bg-primary/10">
+        <AlertCircle className="h-4 w-4 text-primary" />
+        <AlertDescription className="text-primary ml-2">
           Upload .dcm (DICOM) files to create new studies. Files will be linked to the first patient in the system.
         </AlertDescription>
       </Alert>

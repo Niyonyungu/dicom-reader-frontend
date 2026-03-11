@@ -13,28 +13,28 @@ export function WorklistTable({ items }: WorklistTableProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'bg-green-500/10 text-green-700 dark:text-green-400';
+        return 'bg-primary/20 text-primary';
       case 'ongoing':
-        return 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400';
+        return 'bg-secondary/20 text-secondary';
       case 'new':
-        return 'bg-blue-500/10 text-blue-700 dark:text-blue-400';
+        return 'bg-accent/20 text-accent';
       default:
-        return 'bg-gray-500/10 text-gray-700 dark:text-gray-400';
+        return 'bg-muted/20 text-muted-foreground';
     }
   };
 
   const getModalityColor = (modality: string) => {
     switch (modality) {
       case 'MRI':
-        return 'bg-purple-500/10 text-purple-700 dark:text-purple-400';
+        return 'bg-primary/20 text-primary';
       case 'CT':
-        return 'bg-blue-500/10 text-blue-700 dark:text-blue-400';
+        return 'bg-secondary/20 text-secondary';
       case 'XR':
-        return 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400';
+        return 'bg-accent/20 text-accent';
       case 'US':
-        return 'bg-orange-500/10 text-orange-700 dark:text-orange-400';
+        return 'bg-primary/20 text-primary';
       default:
-        return 'bg-gray-500/10 text-gray-700 dark:text-gray-400';
+        return 'bg-muted/20 text-muted-foreground';
     }
   };
 
