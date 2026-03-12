@@ -4,14 +4,13 @@ import { Analytics } from '@vercel/analytics/next'
 import { Providers } from '@/components/providers'
 import './globals.css'
 
-const geist = Geist({ subsets: ["latin"] });
-const geistMono = Geist_Mono({ subsets: ["latin"] });
+const geist = Geist({ subsets: ["latin"], variable: '--font-sans' });
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: '--font-mono' });
 
 export const metadata: Metadata = {
   title: 'DICOM Reader',
   description: 'Professional Medical DICOM Viewer',
   generator: 'v0.app',
-  // replace these paths with your own favicon files (put them in public/)
   icons: {
     icon: '/favicon.ico',
     apple: '/apple-icon.png',
@@ -24,8 +23,11 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className="light">
-      <body className={`font-sans antialiased bg-background text-foreground ${geist.className} ${geistMono.className}`}>
+    <html lang="en" suppressHydrationWarning className="dark" style={{
+      '--font-sans': geist.style.fontFamily,
+      '--font-mono': geistMono.style.fontFamily,
+    } as React.CSSProperties}>
+      <body className="font-sans antialiased bg-background text-foreground">
         <Providers>
           {children}
         </Providers>
