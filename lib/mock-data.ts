@@ -14,6 +14,9 @@ export interface Patient {
   dob: string;
   contactInfo: string;
   email?: string;
+  // added in response to feedback
+  weightKg?: number;
+  heightCm?: number;
   createdAt: string;
 }
 
@@ -25,6 +28,9 @@ export interface WorklistItem {
   studyTime: string;
   modality: 'MRI' | 'CT' | 'XR' | 'US';
   description: string;
+  // additional metadata for more complete study descriptions
+  details?: string;
+  referringPhysician?: string;
   status: 'new' | 'ongoing' | 'completed';
   imageCount: number;
   images: DicomImage[];
@@ -87,6 +93,8 @@ export const mockPatients: Patient[] = [
     dob: '1979-05-15',
     contactInfo: '555-0101',
     email: 'john.doe@email.com',
+    weightKg: 82,
+    heightCm: 178,
     createdAt: '2025-01-10'
   },
   {
@@ -97,6 +105,8 @@ export const mockPatients: Patient[] = [
     dob: '1987-08-22',
     contactInfo: '555-0102',
     email: 'jane.smith@email.com',
+    weightKg: 65,
+    heightCm: 165,
     createdAt: '2025-01-12'
   },
   {
@@ -107,6 +117,8 @@ export const mockPatients: Patient[] = [
     dob: '1963-03-10',
     contactInfo: '555-0103',
     email: 'robert.j@email.com',
+    weightKg: 90,
+    heightCm: 182,
     createdAt: '2025-01-15'
   },
   {
@@ -117,6 +129,8 @@ export const mockPatients: Patient[] = [
     dob: '1974-12-05',
     contactInfo: '555-0104',
     email: 'maria.garcia@email.com',
+    weightKg: 70,
+    heightCm: 160,
     createdAt: '2025-02-01'
   },
   {
@@ -127,6 +141,8 @@ export const mockPatients: Patient[] = [
     dob: '1990-07-18',
     contactInfo: '555-0105',
     email: 'm.chen@email.com',
+    weightKg: 75,
+    heightCm: 175,
     createdAt: '2025-02-10'
   }
 ];
@@ -141,6 +157,8 @@ export const mockWorklist: WorklistItem[] = [
     studyTime: '09:30',
     modality: 'MRI',
     description: 'Brain MRI with Contrast',
+    details: 'Suspected lesion in right frontal lobe; additional sequences acquired.',
+    referringPhysician: 'Dr. Alice Wang',
     status: 'completed',
     imageCount: 45,
     images: [
@@ -181,6 +199,8 @@ export const mockWorklist: WorklistItem[] = [
     studyTime: '10:15',
     modality: 'CT',
     description: 'Chest CT',
+    details: 'Looking for pulmonary nodules; contrast-enhanced phase included.',
+    referringPhysician: 'Dr. Michael Brown',
     status: 'completed',
     imageCount: 120,
     images: [

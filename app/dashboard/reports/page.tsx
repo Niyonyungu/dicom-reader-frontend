@@ -121,30 +121,25 @@ export default function ReportsPage() {
         </p>
       </div>
 
-      {/* Only show generator for admin and service roles */}
-      {user?.role !== 'user' && (
-        <Tabs defaultValue="create" className="w-full">
-          <TabsList className="bg-muted/50 border-b border-border">
-            <TabsTrigger value="create">Create Report</TabsTrigger>
-            <TabsTrigger value="view">View Reports</TabsTrigger>
-          </TabsList>
+      {/* generator available to all roles now */}
+      <Tabs defaultValue="create" className="w-full">
+        <TabsList className="bg-muted/50 border-b border-border">
+          <TabsTrigger value="create">Create Report</TabsTrigger>
+          <TabsTrigger value="view">View Reports</TabsTrigger>
+        </TabsList>
 
-          <TabsContent value="create" className="space-y-6">
-            <ReportGenerator
-              patients={patients}
-              worklist={worklist}
-              onReportGenerate={handleReportGenerate}
-            />
-          </TabsContent>
+        <TabsContent value="create" className="space-y-6">
+          <ReportGenerator
+            patients={patients}
+            worklist={worklist}
+            onReportGenerate={handleReportGenerate}
+          />
+        </TabsContent>
 
-          <TabsContent value="view" className="space-y-6">
-            {renderReportsList()}
-          </TabsContent>
-        </Tabs>
-      )}
-
-      {/* Show only reports for regular users */}
-      {user?.role === 'user' && renderReportsList()}
+        <TabsContent value="view" className="space-y-6">
+          {renderReportsList()}
+        </TabsContent>
+      </Tabs>
 
       {/* Report Preview Dialog */}
       {selectedReport && (

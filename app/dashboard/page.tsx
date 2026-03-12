@@ -5,11 +5,13 @@ import { useWorklist } from '@/context/worklist-context';
 import { usePatients } from '@/context/patients-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, Users, FileText, Zap } from 'lucide-react';
+import { WorklistTable } from '@/components/worklist/worklist-table';
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const { worklist } = useWorklist();
   const { patients } = usePatients();
+
 
   const recentStudies = worklist.slice(0, 5);
   const completedStudies = worklist.filter((w) => w.status === 'completed').length;
@@ -78,54 +80,17 @@ export default function DashboardPage() {
         })}
       </div>
 
-      {/* Recent Studies */}
+      {/* Recent Studies (compact table) */}
       <Card className="border-border">
         <CardHeader>
           <CardTitle className="text-lg text-foreground">Recent Studies</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {recentStudies.length === 0 ? (
-              <p className="text-muted-foreground text-sm">No studies available</p>
-            ) : (
-              recentStudies.map((study) => (
-                <div
-                  key={study.id}
-                  className="p-4 rounded-lg bg-card border border-border hover:border-primary/50 transition-colors"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-foreground">
-                        {study.patientName}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {study.description}
-                      </p>
-                      <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-                        <span>{study.modality}</span>
-                        <span>{study.studyDate} {study.studyTime}</span>
-                        <span>{study.imageCount} images</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          study.status === 'completed'
-                            ? 'bg-accent/20 text-accent'
-                            : study.status === 'ongoing'
-                            ? 'bg-secondary/20 text-secondary'
-                            : 'bg-muted/20 text-muted-foreground'
-                        }`}
-                      >
-                        {study.status.charAt(0).toUpperCase() +
-                          study.status.slice(1)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+          {recentStudies.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No studies available</p>
+          ) : (
+            <WorklistTable items={recentStudies} />
+          )}
         </CardContent>
       </Card>
 

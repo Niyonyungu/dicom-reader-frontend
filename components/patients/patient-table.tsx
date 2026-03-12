@@ -61,6 +61,12 @@ export function PatientTable({
               DOB
             </th>
             <th className="px-4 py-3 text-left font-semibold text-foreground">
+              Weight (kg)
+            </th>
+            <th className="px-4 py-3 text-left font-semibold text-foreground">
+              Height (cm)
+            </th>
+            <th className="px-4 py-3 text-left font-semibold text-foreground">
               Contact
             </th>
             <th className="px-4 py-3 text-left font-semibold text-foreground">
@@ -86,6 +92,12 @@ export function PatientTable({
               </td>
               <td className="px-4 py-3 text-foreground">{patient.gender}</td>
               <td className="px-4 py-3 text-foreground">{patient.dob}</td>
+              <td className="px-4 py-3 text-foreground">
+                {patient.weightKg ?? '-'}
+              </td>
+              <td className="px-4 py-3 text-foreground">
+                {patient.heightCm ?? '-'}
+              </td>
               <td className="px-4 py-3 text-foreground">{patient.contactInfo}</td>
               <td className="px-4 py-3 text-foreground text-xs">{patient.email}</td>
               <td className="px-4 py-3">

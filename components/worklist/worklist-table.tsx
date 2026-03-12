@@ -4,6 +4,7 @@ import { WorklistItem } from '@/lib/mock-data';
 import { Button } from '@/components/ui/button';
 import { Eye } from 'lucide-react';
 import Link from 'next/link';
+import { useReports } from '@/context/reports-context';
 
 interface WorklistTableProps {
   items: WorklistItem[];
@@ -46,6 +47,8 @@ export function WorklistTable({ items }: WorklistTableProps) {
     );
   }
 
+  const { getReportsByWorklist } = useReports();
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -70,10 +73,16 @@ export function WorklistTable({ items }: WorklistTableProps) {
               Description
             </th>
             <th className="px-4 py-3 text-left font-semibold text-foreground">
+              Referring
+            </th>
+            <th className="px-4 py-3 text-left font-semibold text-foreground">
               Images
             </th>
             <th className="px-4 py-3 text-left font-semibold text-foreground">
               Status
+            </th>
+            <th className="px-4 py-3 text-left font-semibold text-foreground">
+              Report
             </th>
             <th className="px-4 py-3 text-left font-semibold text-foreground">
               Action
@@ -102,7 +111,15 @@ export function WorklistTable({ items }: WorklistTableProps) {
               <td className="px-4 py-3 text-foreground">{item.studyDate}</td>
               <td className="px-4 py-3 text-foreground">{item.studyTime}</td>
               <td className="px-4 py-3 text-foreground text-xs max-w-xs truncate">
-                {item.description}
+                <div>{item.description}</div>
+                {item.details && (
+                  <div className="text-xs text-muted-foreground mt-1 truncate">
+                    {item.details}
+                  </div>
+                )}
+              </td>
+              <td className="px-4 py-3 text-foreground">
+                {item.referringPhysician || '-'}
               </td>
               <td className="px-4 py-3 text-foreground text-center">
                 {item.imageCount}
@@ -115,6 +132,17 @@ export function WorklistTable({ items }: WorklistTableProps) {
                 >
                   {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
                 </span>
+              </td>
+              <td className="px-4 py-3">
+                {getReportsByWorklist(item.id) ? (
+                  <Link href={`/dashboard/reports`}>
+                    <span className="text-primary hover:underline text-xs">
+                      Yes
+                    </span>
+                  </Link>
+                ) : (
+                  <span className="text-muted-foreground text-xs">No</span>
+                )}
               </td>
               <td className="px-4 py-3">
                 <Link href={`/dashboard/viewer/${item.id}`}>
