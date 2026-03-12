@@ -42,6 +42,8 @@ export function AddPatientModal({
     dob: '',
     contactInfo: '',
     email: '',
+    weightKg: '',
+    heightCm: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -75,6 +77,8 @@ export function AddPatientModal({
       dob: formData.dob,
       contactInfo: formData.contactInfo,
       email: formData.email,
+      weightKg: formData.weightKg ? parseFloat(formData.weightKg) : undefined,
+      heightCm: formData.heightCm ? parseFloat(formData.heightCm) : undefined,
       createdAt: new Date().toISOString().split('T')[0],
     };
 
@@ -87,6 +91,8 @@ export function AddPatientModal({
       dob: '',
       contactInfo: '',
       email: '',
+      weightKg: '',
+      heightCm: '',
     });
     setErrors({});
     onOpenChange(false);
@@ -168,6 +174,37 @@ export function AddPatientModal({
               {errors.contactInfo && (
                 <p className="text-xs text-destructive">{errors.contactInfo}</p>
               )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="weight">Weight (kg)</Label>
+              <Input
+                id="weight"
+                type="number"
+                step="0.1"
+                placeholder="e.g. 70"
+                value={formData.weightKg}
+                onChange={(e) =>
+                  setFormData({ ...formData, weightKg: e.target.value })
+                }
+                className="bg-input border-border"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="height">Height (cm)</Label>
+              <Input
+                id="height"
+                type="number"
+                step="0.1"
+                placeholder="e.g. 170"
+                value={formData.heightCm}
+                onChange={(e) =>
+                  setFormData({ ...formData, heightCm: e.target.value })
+                }
+                className="bg-input border-border"
+              />
             </div>
           </div>
 
