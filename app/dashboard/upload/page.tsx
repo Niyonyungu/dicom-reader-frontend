@@ -8,19 +8,26 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DicomUploadArea } from '@/components/upload/dicom-upload-area';
 import { Upload as UploadIcon, AlertCircle, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 export default function UploadPage() {
   const { addWorklistItem } = useWorklist();
   const { patients } = usePatients();
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [selectedPatientId, setSelectedPatientId] = useState<string>('');
 
   const handleFilesSelected = (files: File[]) => {
-    // Create new worklist items from uploaded files
-    const patient = patients[0]; // Default to first patient for demo
+    // Check if a patient is selected
+    if (!selectedPatientId) {
+      alert('Please select a patient before uploading files.');
+      return;
+    }
 
+    const patient = patients.find(p => p.id === selectedPatientId);
     if (!patient) {
-      alert('No patients found. Please add a patient first.');
+      alert('Selected patient not found.');
       return;
     }
 
@@ -86,9 +93,33 @@ export default function UploadPage() {
       <Alert className="border-primary/50 bg-primary/10">
         <AlertCircle className="h-4 w-4 text-primary" />
         <AlertDescription className="text-primary ml-2">
-          Upload .dcm (DICOM) files to create new studies. Files will be linked to the first patient in the system.
+          Select a patient and upload .dcm (DICOM) files to create new studies.
         </AlertDescription>
       </Alert>
+
+      {/* Patient Selection */}
+      <Card className="border-border">
+        <CardHeader>
+          <CardTitle className="text-base">Select Patient</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <Label htmlFor="patient-select">Choose the patient for this study</Label>
+            <Select value={selectedPatientId} onValueChange={setSelectedPatientId}>
+              <SelectTrigger className="bg-input border-border">
+                <SelectValue placeholder="Select a patient..." />
+              </SelectTrigger>
+              <SelectContent>
+                {patients.map((patient) => (
+                  <SelectItem key={patient.id} value={patient.id}>
+                    {patient.name} (ID: {patient.id})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Upload Area */}
       <Card className="border-border">

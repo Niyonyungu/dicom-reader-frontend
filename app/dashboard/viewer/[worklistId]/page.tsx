@@ -7,6 +7,7 @@ import { DicomViewer } from '@/components/viewer/dicom-viewer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Download, Share2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 export default function ViewerPage() {
   const params = useParams();
@@ -66,7 +67,12 @@ export default function ViewerPage() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold text-foreground">DICOM Viewer</h1>
+          <div className="flex items-center gap-2 mb-1">
+            <h1 className="text-2xl font-bold text-foreground">DICOM Viewer</h1>
+            <Badge variant="secondary" className="bg-accent/10 text-accent border-accent/20">
+              Uploaded Study
+            </Badge>
+          </div>
           <p className="text-sm text-muted-foreground">
             {worklistItem.description}
           </p>

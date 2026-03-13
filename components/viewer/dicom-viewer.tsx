@@ -79,6 +79,19 @@ export function DicomViewer({
     // Draw image
     ctx.drawImage(imageCanvas, 0, 0);
     ctx.restore();
+
+    // Add uploaded file information overlay
+    if (currentImage) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillRect(10, 10, 300, 80);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '12px monospace';
+      ctx.fillText(`Uploaded File: ${currentImage.filename}`, 20, 30);
+      ctx.fillText(`Instance: ${currentImage.instanceNumber}`, 20, 50);
+      ctx.fillText(`Series: ${currentImage.seriesDescription}`, 20, 70);
+      ctx.fillText(`Slice: ${currentImage.sliceThickness || 'N/A'}`, 20, 90);
+    }
   }, [viewerState, currentImage, images]);
 
   const handleZoom = (direction: 'in' | 'out') => {
