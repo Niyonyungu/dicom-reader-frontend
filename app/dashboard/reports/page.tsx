@@ -52,33 +52,53 @@ export default function ReportsPage() {
   const handleExportPDF = async (report: Report) => {
     setIsExporting(true);
     try {
+      // Create a simple HTML structure without complex CSS that might cause issues
       const content = `
-        <div style="font-family: Arial, sans-serif; padding: 20px;">
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; color: #000000; background: #ffffff; }
+            h1 { color: #000000; border-bottom: 2px solid #000000; padding-bottom: 10px; }
+            h2 { color: #000000; margin-top: 30px; margin-bottom: 10px; }
+            p { margin: 10px 0; line-height: 1.5; }
+            strong { font-weight: bold; }
+            hr { border: none; border-top: 1px solid #cccccc; margin: 20px 0; }
+            .signature { margin-top: 40px; }
+          </style>
+        </head>
+        <body>
           <h1>Medical Imaging Report</h1>
+
           <h2>Patient Information</h2>
           <p><strong>Patient ID:</strong> ${report.patientId}</p>
           <p><strong>Report ID:</strong> ${report.id}</p>
           <p><strong>Date:</strong> ${new Date(report.createdAt).toLocaleDateString()}</p>
-          
+
           <h2>Findings</h2>
           <p>${report.findings.replace(/\n/g, '<br>')}</p>
-          
+
           <h2>Impression</h2>
           <p>${report.impression.replace(/\n/g, '<br>')}</p>
-          
+
           <h2>Recommendations</h2>
           <p>${report.recommendations || 'None specified'}</p>
-          
+
           <hr>
-          <p><strong>Radiologist:</strong> ${report.radiologist}</p>
-          <p><strong>Signature:</strong> ___________________________</p>
-          <p><em>Generated on ${new Date().toLocaleString()}</em></p>
-        </div>
+          <div class="signature">
+            <p><strong>Radiologist:</strong> ${report.radiologist}</p>
+            <p><strong>Signature:</strong> ___________________________</p>
+            <p><em>Generated on ${new Date().toLocaleString()}</em></p>
+          </div>
+        </body>
+        </html>
       `;
 
       await exportReportAsPDF(content, `report-${report.id}.pdf`);
     } catch (error) {
-      alert('Error exporting PDF');
+      console.error('PDF export error:', error);
+      alert('Error exporting PDF. Please try again.');
     } finally {
       setIsExporting(false);
     }

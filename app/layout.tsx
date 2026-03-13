@@ -23,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className="dark" style={{
+    <html lang="en" suppressHydrationWarning className="light" style={{
       '--font-sans': geist.style.fontFamily,
       '--font-mono': geistMono.style.fontFamily,
     } as React.CSSProperties}>

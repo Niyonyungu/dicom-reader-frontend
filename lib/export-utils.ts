@@ -7,25 +7,38 @@ export async function exportReportAsPDF(
   filename: string
 ) {
   try {
-    const element = document.createElement('div');
-    element.innerHTML = htmlContent;
-    element.style.padding = '20px';
+    // Create a temporary iframe to properly render the HTML
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.left = '-10000px';
+    iframe.style.top = '0';
+    iframe.style.width = '800px';
+    iframe.style.height = '1000px';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
 
-    // html2canvas needs the element to be in the document to correctly
-    // resolve styles and cloned nodes (iframes, fonts, etc.). Render the
-    // content offscreen, capture it, then remove the container.
-    const container = document.createElement('div');
-    container.style.position = 'absolute';
-    container.style.left = '-10000px';
-    container.style.top = '0';
-    container.style.width = '800px';
-    container.appendChild(element);
-    document.body.appendChild(container);
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!iframeDoc) {
+      throw new Error('Unable to access iframe document');
+    }
 
-    // sanitize any lab() color values in computed styles by converting them
-    // to an equivalent rgb string. html2canvas doesn't support lab() and will
+    iframeDoc.open();
+    iframeDoc.write(htmlContent);
+    iframeDoc.close();
+
+    // Wait for the iframe to load completely
+    await new Promise((resolve) => {
+      iframe.onload = resolve;
+      // Fallback timeout
+      setTimeout(resolve, 1000);
+    });
+
+    const element = iframeDoc.body;
+
+    // sanitize any lab() or oklch() color values in computed styles by converting them
+    // to an equivalent rgb string. html2canvas doesn't support lab() or oklch() and will
     // throw when it encounters one.
-    function resolveLabColor(color: string) {
+    function resolveColor(color: string) {
       const dummy = document.createElement('div');
       dummy.style.color = color;
       dummy.style.position = 'absolute';
@@ -40,8 +53,9 @@ export async function exportReportAsPDF(
       const cs = getComputedStyle(el);
       for (const prop of Array.from(cs)) {
         const val = cs.getPropertyValue(prop);
-        if (val.includes('lab(')) {
-          const rgb = resolveLabColor(val);
+        // Check for modern CSS color functions that html2canvas doesn't support
+        if (val.includes('lab(') || val.includes('oklch(') || val.includes('lch(') || val.includes('hwb(') || val.includes('color(')) {
+          const rgb = resolveColor(val);
           el.style.setProperty(prop, rgb, cs.getPropertyPriority(prop));
         }
       }
@@ -56,10 +70,14 @@ export async function exportReportAsPDF(
         scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true,
+        allowTaint: false,
+        logging: false,
+        width: 800,
+        height: element.scrollHeight,
       });
     } finally {
-      // Clean up the offscreen container whether html2canvas succeeded or not
-      if (container && container.parentNode) container.parentNode.removeChild(container);
+      // Clean up the iframe
+      if (iframe && iframe.parentNode) iframe.parentNode.removeChild(iframe);
     }
 
     const imgData = canvas.toDataURL('image/png');
@@ -87,7 +105,14 @@ export async function exportReportAsPDF(
     pdf.save(filename);
   } catch (error) {
     console.error('Error exporting PDF:', error);
-    throw error;
+    // Provide more specific error messages
+    if (error instanceof Error) {
+      if (error.message.includes('color')) {
+        throw new Error('PDF export failed due to unsupported color formats. Please try again.');
+      }
+      throw new Error(`PDF export failed: ${error.message}`);
+    }
+    throw new Error('PDF export failed due to an unknown error. Please try again.');
   }
 }
 
