@@ -7,6 +7,9 @@ import { DicomViewer } from '@/components/viewer/dicom-viewer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Download, Share2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Info } from 'lucide-react';
 
 export default function ViewerPage() {
   const params = useParams();
@@ -66,12 +69,27 @@ export default function ViewerPage() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold text-foreground">DICOM Viewer</h1>
+          <div className="flex items-center gap-2 mb-1">
+            <h1 className="text-2xl font-bold text-foreground">DICOM Viewer</h1>
+            <Badge variant="secondary" className="bg-accent/10 text-accent border-accent/20">
+              Uploaded Study
+            </Badge>
+          </div>
           <p className="text-sm text-muted-foreground">
             {worklistItem.description}
           </p>
         </div>
       </div>
+
+      {/* Demo Notice */}
+      <Alert className="border-amber-200 bg-amber-50">
+        <Info className="h-4 w-4 text-amber-600" />
+        <AlertDescription className="text-amber-800">
+          <strong>Demo Limitation:</strong> This viewer shows file information for uploaded DICOM files.
+          Actual DICOM image parsing and rendering requires a backend service with DICOM libraries.
+          The viewer displays metadata and file details instead of the actual medical images.
+        </AlertDescription>
+      </Alert>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Main Viewer */}
