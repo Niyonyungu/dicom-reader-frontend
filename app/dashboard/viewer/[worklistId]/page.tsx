@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Download, Share2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Info } from 'lucide-react';
 
 export default function ViewerPage() {
   const params = useParams();
@@ -78,6 +80,16 @@ export default function ViewerPage() {
           </p>
         </div>
       </div>
+
+      {/* Demo Notice */}
+      <Alert className="border-amber-200 bg-amber-50">
+        <Info className="h-4 w-4 text-amber-600" />
+        <AlertDescription className="text-amber-800">
+          <strong>Demo Limitation:</strong> This viewer shows file information for uploaded DICOM files.
+          Actual DICOM image parsing and rendering requires a backend service with DICOM libraries.
+          The viewer displays metadata and file details instead of the actual medical images.
+        </AlertDescription>
+      </Alert>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Main Viewer */}

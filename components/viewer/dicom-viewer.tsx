@@ -48,51 +48,46 @@ export function DicomViewer({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Generate mock DICOM image
-    const imageCanvas = generateMockDICOMImage(
-      viewerState.currentImage + 1,
-      currentImage?.seriesDescription || 'Series'
-    );
-
-    // Clear canvas
+    // Clear canvas with dark background (typical for medical viewers)
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Apply transformations
-    ctx.save();
-    ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.rotate((viewerState.rotation * Math.PI) / 180);
-    ctx.scale(viewerState.zoom, viewerState.zoom);
-    if (viewerState.isFlipped) ctx.scale(-1, 1);
-    ctx.translate(-imageCanvas.width / 2, -imageCanvas.height / 2);
+    // For demo purposes, show file information instead of actual DICOM parsing
+    // In a real application, this would parse the actual DICOM file
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '16px monospace';
+    ctx.textAlign = 'center';
 
-    // Apply window/level
-    const imageData = ctx.getImageData(0, 0, imageCanvas.width, imageCanvas.height);
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = imageCanvas.width;
-    tempCanvas.height = imageCanvas.height;
-    const tempCtx = tempCanvas.getContext('2d');
-    if (tempCtx) {
-      tempCtx.drawImage(imageCanvas, 0, 0);
-    }
+    // Center the text
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
 
-    // Draw image
-    ctx.drawImage(imageCanvas, 0, 0);
-    ctx.restore();
+    // Show demo message
+    ctx.fillText('DICOM File Uploaded', centerX, centerY - 60);
+    ctx.fillText('Demo Viewer - File Parsing Requires Backend', centerX, centerY - 30);
 
-    // Add uploaded file information overlay
+    // Show file details
     if (currentImage) {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      ctx.fillRect(10, 10, 300, 80);
-
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '12px monospace';
-      ctx.fillText(`Uploaded File: ${currentImage.filename}`, 20, 30);
-      ctx.fillText(`Instance: ${currentImage.instanceNumber}`, 20, 50);
-      ctx.fillText(`Series: ${currentImage.seriesDescription}`, 20, 70);
-      ctx.fillText(`Slice: ${currentImage.sliceThickness || 'N/A'}`, 20, 90);
+      ctx.font = '14px monospace';
+      ctx.fillText(`File: ${currentImage.filename}`, centerX, centerY + 10);
+      ctx.fillText(`Instance: ${currentImage.instanceNumber}`, centerX, centerY + 35);
+      ctx.fillText(`Series: ${currentImage.seriesDescription}`, centerX, centerY + 60);
+      ctx.fillText(`Modality: ${modality}`, centerX, centerY + 85);
     }
-  }, [viewerState, currentImage, images]);
+
+    // Add border to indicate this is a file representation
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+
+    // Add file icon representation
+    ctx.fillStyle = '#4a90e2';
+    ctx.fillRect(centerX - 30, centerY - 120, 60, 80);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '24px monospace';
+    ctx.fillText('📄', centerX - 12, centerY - 70);
+
+  }, [viewerState, currentImage, images, modality]);
 
   const handleZoom = (direction: 'in' | 'out') => {
     const factor = direction === 'in' ? 1.1 : 0.9;

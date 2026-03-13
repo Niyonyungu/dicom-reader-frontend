@@ -10,6 +10,7 @@ import { Upload as UploadIcon, AlertCircle, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Info } from 'lucide-react';
 
 export default function UploadPage() {
   const { addWorklistItem } = useWorklist();
@@ -94,6 +95,15 @@ export default function UploadPage() {
         <AlertCircle className="h-4 w-4 text-primary" />
         <AlertDescription className="text-primary ml-2">
           Select a patient and upload .dcm (DICOM) files to create new studies.
+        </AlertDescription>
+      </Alert>
+
+      {/* Demo Notice */}
+      <Alert className="border-amber-200 bg-amber-50">
+        <Info className="h-4 w-4 text-amber-600" />
+        <AlertDescription className="text-amber-800">
+          <strong>Demo Note:</strong> Files are uploaded and associated with patients, but actual DICOM image parsing
+          and rendering requires backend processing. The viewer will show file metadata and information instead of actual medical images.
         </AlertDescription>
       </Alert>
 
