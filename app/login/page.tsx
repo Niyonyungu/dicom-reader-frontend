@@ -44,7 +44,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-b from-background to-background/80 flex">
       {/* Hero side for large screens with graphic */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-center bg-primary/10 p-12 space-y-8">
-        <img src="/placeholder-logo.svg" alt="DICOM graphic" className="w-32 h-32 mx-auto opacity-70" />
+        <img src="" alt="DICOM graphic" className="w-32 h-32 mx-auto opacity-70" />
         <div>
           <div className="flex items-center gap-3 mb-4">
             <div className="p-3 rounded-lg bg-primary/20">
