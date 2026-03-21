@@ -182,6 +182,7 @@ export default function ViewerPage() {
                   syncIndex={syncIndex}
                   onIndexChange={setSyncIndex}
                   onImageViewed={handleImageViewed}
+                  worklistItem={worklistItem}
                 />
                 <DicomViewer
                   images={compareSeries}
@@ -190,6 +191,7 @@ export default function ViewerPage() {
                   syncIndex={syncIndex}
                   onIndexChange={setSyncIndex}
                   onImageViewed={handleImageViewed}
+                  worklistItem={worklistItem}
                 />
               </div>
             ) : (

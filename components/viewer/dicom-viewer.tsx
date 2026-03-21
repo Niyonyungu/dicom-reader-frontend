@@ -18,6 +18,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Settings,
+  Star,
+  Camera,
+  FileText,
+  Filter,
+  BarChart3,
 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 
@@ -28,6 +33,7 @@ interface DicomViewerProps {
   syncIndex?: number;
   onIndexChange?: (index: number) => void;
   onImageViewed?: (imageId: string) => void;
+  worklistItem?: any; // For metadata access
 }
 
 export function DicomViewer({
@@ -37,6 +43,7 @@ export function DicomViewer({
   syncIndex,
   onIndexChange,
   onImageViewed,
+  worklistItem,
 }: DicomViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [viewerState, setViewerState] = useState<ViewerState>(
@@ -46,11 +53,14 @@ export function DicomViewer({
   const [isPlaying, setIsPlaying] = useState(false);
   const [annotationMode, setAnnotationMode] = useState(false);
   const [measurementMode, setMeasurementMode] = useState(false);
-  const [measurementPoints, setMeasurementPoints] = useState<{ x: number; y: number }[]>([]);
-  const [measurementDistance, setMeasurementDistance] = useState<number | null>(null);
-  const [annotations, setAnnotations] = useState<
-    { x: number; y: number; label: string; imageId: string }[]
-  >([]);
+  const [keyImages, setKeyImages] = useState<Set<string>>(new Set());
+  const [showMetadata, setShowMetadata] = useState(false);
+  const [imageFilter, setImageFilter] = useState<'none' | 'sharpen' | 'smooth' | 'edge'>('none');
+  const [qualityMetrics, setQualityMetrics] = useState<{
+    brightness: number;
+    contrast: number;
+    noise: number;
+  } | null>(null);
 
   const currentImage = images[viewerState.currentImage];
 
@@ -102,6 +112,11 @@ export function DicomViewer({
       if (tmpCtx) {
         tmpCtx.putImageData(pixel, 0, 0);
         ctx.drawImage(tmpCanvas, 0, 0, canvas.width, canvas.height);
+
+        // Apply image filter
+        if (imageFilter !== 'none') {
+          applyImageFilter(ctx, imageFilter);
+        }
       }
     } else {
       // Demo placeholder for missing parser
@@ -160,6 +175,13 @@ export function DicomViewer({
     ctx.font = '24px monospace';
     ctx.fillText('📄', centerX - 12, centerY - 70);
 
+    // Key image indicator
+    if (currentImage && keyImages.has(currentImage.id)) {
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = 'bold 16px monospace';
+      ctx.fillText('★ KEY IMAGE', centerX - 50, 50);
+    }
+
     // Draw annotations for current image
     const currentAnnotations = annotations.filter((a) => a.imageId === currentImage?.id);
     currentAnnotations.forEach((annotation) => {
@@ -195,7 +217,7 @@ export function DicomViewer({
       ctx.font = '14px monospace';
       ctx.fillText(`${distance} px`, (x1 + x2) / 2 + 8, (y1 + y2) / 2 - 8);
     }
-  }, [viewerState, currentImage, images, modality, annotations, measurementPoints]);
+  }, [viewerState, currentImage, images, modality, annotations, measurementPoints, imageFilter, keyImages]);
 
   const handleZoom = (direction: 'in' | 'out') => {
     const factor = direction === 'in' ? 1.1 : 0.9;
@@ -306,6 +328,114 @@ export function DicomViewer({
     const dx = (p1.x - p2.x) * canvasRef.current.width;
     const dy = (p1.y - p2.y) * canvasRef.current.height;
     setMeasurementDistance(Math.hypot(dx, dy));
+  };
+
+  const toggleKeyImage = () => {
+    if (!currentImage) return;
+    setKeyImages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(currentImage.id)) {
+        newSet.delete(currentImage.id);
+      } else {
+        newSet.add(currentImage.id);
+      }
+      return newSet;
+    });
+  };
+
+  const captureScreen = async () => {
+    if (!canvasRef.current) return;
+    try {
+      const canvas = canvasRef.current;
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = `dicom-capture-${currentImage?.filename || 'image'}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (error) {
+      console.error('Screen capture failed:', error);
+    }
+  };
+
+  const calculateQualityMetrics = () => {
+    if (!currentImage?.pixelData) return;
+
+    const data = currentImage.pixelData.data;
+    let sum = 0, sumSq = 0, count = 0;
+    let min = 255, max = 0;
+
+    for (let i = 0; i < data.length; i += 4) {
+      const gray = data[i]; // Assuming grayscale
+      sum += gray;
+      sumSq += gray * gray;
+      min = Math.min(min, gray);
+      max = Math.max(max, gray);
+      count++;
+    }
+
+    const mean = sum / count;
+    const variance = (sumSq / count) - (mean * mean);
+    const stdDev = Math.sqrt(variance);
+
+    setQualityMetrics({
+      brightness: Math.round(mean),
+      contrast: Math.round(max - min),
+      noise: Math.round(stdDev)
+    });
+  };
+
+  const applyImageFilter = (ctx: CanvasRenderingContext2D, filter: string) => {
+    if (filter === 'none') return;
+
+    const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+    const data = imageData.data;
+
+    if (filter === 'sharpen') {
+      // Simple sharpen filter
+      const kernel = [0, -1, 0, -1, 5, -1, 0, -1, 0];
+      applyConvolutionFilter(data, kernel);
+    } else if (filter === 'smooth') {
+      // Simple blur filter
+      const kernel = [1 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 9, 1 / 9];
+      applyConvolutionFilter(data, kernel);
+    } else if (filter === 'edge') {
+      // Simple edge detection
+      const kernel = [-1, -1, -1, -1, 8, -1, -1, -1, -1];
+      applyConvolutionFilter(data, kernel);
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+  };
+
+  const applyConvolutionFilter = (data: Uint8ClampedArray, kernel: number[]) => {
+    const side = Math.round(Math.sqrt(kernel.length));
+    const halfSide = Math.floor(side / 2);
+    const src = new Uint8ClampedArray(data);
+    const sw = Math.sqrt(data.length / 4);
+    const sh = sw;
+
+    for (let y = 0; y < sh; y++) {
+      for (let x = 0; x < sw; x++) {
+        let r = 0, g = 0, b = 0;
+        for (let cy = 0; cy < side; cy++) {
+          for (let cx = 0; cx < side; cx++) {
+            const scy = y + cy - halfSide;
+            const scx = x + cx - halfSide;
+            if (scy >= 0 && scy < sh && scx >= 0 && scx < sw) {
+              const srcOff = (scy * sw + scx) * 4;
+              const wt = kernel[cy * side + cx];
+              r += src[srcOff] * wt;
+              g += src[srcOff + 1] * wt;
+              b += src[srcOff + 2] * wt;
+            }
+          }
+        }
+        const dstOff = (y * sw + x) * 4;
+        data[dstOff] = Math.min(255, Math.max(0, r));
+        data[dstOff + 1] = Math.min(255, Math.max(0, g));
+        data[dstOff + 2] = Math.min(255, Math.max(0, b));
+      }
+    }
   };
 
   if (images.length === 0) {
@@ -438,6 +568,42 @@ export function DicomViewer({
               Clear Measures
             </Button>
             <Button
+              variant={keyImages.has(currentImage?.id || '') ? 'default' : 'outline'}
+              size="sm"
+              onClick={toggleKeyImage}
+              title="Mark as Key Image"
+              className="border-border"
+            >
+              <Star className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={captureScreen}
+              title="Capture Screen"
+              className="border-border"
+            >
+              <Camera className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowMetadata(!showMetadata)}
+              title="DICOM Metadata"
+              className="border-border"
+            >
+              <FileText className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={calculateQualityMetrics}
+              title="Quality Metrics"
+              className="border-border"
+            >
+              <BarChart3 className="h-4 w-4" />
+            </Button>
+            <Button
               variant="outline"
               size="sm"
               onClick={handleReset}
@@ -552,6 +718,114 @@ export function DicomViewer({
               <p className="mt-2 text-xs font-semibold">
                 {currentImage ? (currentImage.instanceNumber % 3 === 0 ? 'Finding: Potential nodule' : 'Finding: No critical finding') : 'No image selected'}
               </p>
+            </div>
+          </div>
+
+          {/* DICOM Metadata Viewer */}
+          {showMetadata && currentImage && (
+            <div className="mt-4 p-4 rounded-lg bg-muted/25 border border-border">
+              <h3 className="text-sm font-semibold mb-3">DICOM Header Information</h3>
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div>
+                  <p className="font-medium text-muted-foreground">Study Information</p>
+                  <p>Study ID: {worklistItem?.id || 'N/A'}</p>
+                  <p>Study Date: {worklistItem?.studyDate || 'N/A'}</p>
+                  <p>Study Time: {worklistItem?.studyTime || 'N/A'}</p>
+                  <p>Modality: {modality}</p>
+                  <p>Description: {description}</p>
+                </div>
+                <div>
+                  <p className="font-medium text-muted-foreground">Image Information</p>
+                  <p>Series: {currentImage.seriesDescription}</p>
+                  <p>Instance: {currentImage.instanceNumber}</p>
+                  <p>Filename: {currentImage.filename}</p>
+                  <p>Window Center: {currentImage.windowCenter || 'N/A'}</p>
+                  <p>Window Width: {currentImage.windowWidth || 'N/A'}</p>
+                  <p>Slice Thickness: {currentImage.sliceThickness || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Quality Metrics */}
+          {qualityMetrics && (
+            <div className="mt-4 p-4 rounded-lg bg-muted/25 border border-border">
+              <h3 className="text-sm font-semibold mb-3">Image Quality Metrics</h3>
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <p className="text-xs text-muted-foreground">Brightness</p>
+                  <p className="text-lg font-semibold">{qualityMetrics.brightness}</p>
+                  <div className="w-full bg-muted rounded-full h-2 mt-1">
+                    <div
+                      className="bg-primary h-2 rounded-full"
+                      style={{ width: `${(qualityMetrics.brightness / 255) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Contrast</p>
+                  <p className="text-lg font-semibold">{qualityMetrics.contrast}</p>
+                  <div className="w-full bg-muted rounded-full h-2 mt-1">
+                    <div
+                      className="bg-primary h-2 rounded-full"
+                      style={{ width: `${(qualityMetrics.contrast / 255) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Noise</p>
+                  <p className="text-lg font-semibold">{qualityMetrics.noise}</p>
+                  <div className="w-full bg-muted rounded-full h-2 mt-1">
+                    <div
+                      className="bg-red-500 h-2 rounded-full"
+                      style={{ width: `${Math.min((qualityMetrics.noise / 50) * 100, 100)}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Image Filters */}
+          <div className="mt-4 p-4 rounded-lg bg-muted/25 border border-border">
+            <h3 className="text-sm font-semibold mb-3">Image Processing</h3>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={imageFilter === 'none' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setImageFilter('none')}
+                className="text-xs"
+              >
+                <Filter className="h-3 w-3 mr-1" />
+                Original
+              </Button>
+              <Button
+                variant={imageFilter === 'sharpen' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setImageFilter('sharpen')}
+                className="text-xs"
+              >
+                <Filter className="h-3 w-3 mr-1" />
+                Sharpen
+              </Button>
+              <Button
+                variant={imageFilter === 'smooth' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setImageFilter('smooth')}
+                className="text-xs"
+              >
+                <Filter className="h-3 w-3 mr-1" />
+                Smooth
+              </Button>
+              <Button
+                variant={imageFilter === 'edge' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setImageFilter('edge')}
+                className="text-xs"
+              >
+                <Filter className="h-3 w-3 mr-1" />
+                Edge Detect
+              </Button>
             </div>
           </div>
         </div>
