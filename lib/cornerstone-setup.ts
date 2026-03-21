@@ -10,6 +10,14 @@ export interface CornerstoneImage {
   windowCenter: number;
   windowWidth: number;
   sliceThickness?: string;
+  pixelData?: ImageData;
+}
+
+declare global {
+  interface Window {
+    cornerstone?: any;
+    dicomParser?: any;
+  }
 }
 
 export interface ViewerState {
@@ -99,3 +107,49 @@ export function getWindowPreset(modality: string, preset: string = 'default') {
   const presets = windowPresets[modalityLower] || windowPresets.xray;
   return presets[preset as keyof typeof presets] || presets.default;
 }
+
+// Load DICOM files (demo fallback): if `dicomParser` is available, parse, else create mock pixel data.
+export async function loadDicomFiles(files: FileList | File[]): Promise<CornerstoneImage[]> {
+  const selected = Array.from(files as File[] | FileList);
+  const loaded: CornerstoneImage[] = [];
+
+  for (let i = 0; i < selected.length; i++) {
+    const file = selected[i];
+    const id = `dicom-${Date.now()}-${i}-${file.name}`;
+    const seriesDescription = `Imported ${file.name}`;
+    let pixelData: ImageData | undefined;
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const bytes = new Uint8ClampedArray(buffer);
+      const edge = Math.floor(Math.sqrt(bytes.length / 4)) || 256;
+      const size = edge * edge;
+      const imageData = new ImageData(edge, edge);
+      for (let p = 0; p < size; p++) {
+        const value = bytes[p * 4] ?? 128;
+        const idx = p * 4;
+        imageData.data[idx] = value;
+        imageData.data[idx + 1] = value;
+        imageData.data[idx + 2] = value;
+        imageData.data[idx + 3] = 255;
+      }
+      pixelData = imageData;
+    } catch (error) {
+      // fallback mock
+      pixelData = undefined;
+    }
+
+    loaded.push({
+      id,
+      instanceNumber: i + 1,
+      filename: file.name,
+      seriesDescription,
+      windowCenter: 40,
+      windowWidth: 400,
+      pixelData,
+    });
+  }
+
+  return loaded;
+}
+

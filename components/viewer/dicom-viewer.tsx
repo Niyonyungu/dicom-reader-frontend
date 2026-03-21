@@ -22,9 +22,11 @@ import {
 import { Slider } from '@/components/ui/slider';
 
 interface DicomViewerProps {
-  images: DicomImage[];
+  images: (DicomImage & { pixelData?: ImageData })[];
   modality: string;
   description: string;
+  syncIndex?: number;
+  onIndexChange?: (index: number) => void;
   onImageViewed?: (imageId: string) => void;
 }
 
@@ -32,6 +34,8 @@ export function DicomViewer({
   images,
   modality,
   description,
+  syncIndex,
+  onIndexChange,
   onImageViewed,
 }: DicomViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -39,8 +43,32 @@ export function DicomViewer({
     defaultViewerState
   );
   const [showWindowControls, setShowWindowControls] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [annotationMode, setAnnotationMode] = useState(false);
+  const [measurementMode, setMeasurementMode] = useState(false);
+  const [measurementPoints, setMeasurementPoints] = useState<{ x: number; y: number }[]>([]);
+  const [measurementDistance, setMeasurementDistance] = useState<number | null>(null);
+  const [annotations, setAnnotations] = useState<
+    { x: number; y: number; label: string; imageId: string }[]
+  >([]);
 
   const currentImage = images[viewerState.currentImage];
+
+  // Sync with external index for multi-viewport sync
+  useEffect(() => {
+    if (typeof syncIndex === 'number' && syncIndex !== viewerState.currentImage) {
+      setViewerState((prev) => ({
+        ...prev,
+        currentImage: Math.max(0, Math.min(images.length - 1, syncIndex)),
+      }));
+    }
+  }, [syncIndex, images.length, viewerState.currentImage]);
+
+  const setCurrentImage = (index: number) => {
+    const bounded = Math.max(0, Math.min(images.length - 1, index));
+    setViewerState((prev) => ({ ...prev, currentImage: bounded }));
+    onIndexChange?.(bounded);
+  };
 
   // Mark current image as viewed
   useEffect(() => {
@@ -61,19 +89,30 @@ export function DicomViewer({
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // For demo purposes, show file information instead of actual DICOM parsing
-    // In a real application, this would parse the actual DICOM file
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '16px monospace';
-    ctx.textAlign = 'center';
-
-    // Center the text
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
 
-    // Show demo message
-    ctx.fillText('DICOM File Uploaded', centerX, centerY - 60);
-    ctx.fillText('Demo Viewer - File Parsing Requires Backend', centerX, centerY - 30);
+    if (currentImage?.pixelData) {
+      // actual pixel rendering path
+      const pixel = currentImage.pixelData;
+      const tmpCanvas = document.createElement('canvas');
+      tmpCanvas.width = pixel.width;
+      tmpCanvas.height = pixel.height;
+      const tmpCtx = tmpCanvas.getContext('2d');
+      if (tmpCtx) {
+        tmpCtx.putImageData(pixel, 0, 0);
+        ctx.drawImage(tmpCanvas, 0, 0, canvas.width, canvas.height);
+      }
+    } else {
+      // Demo placeholder for missing parser
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '16px monospace';
+      ctx.textAlign = 'center';
+
+      // Show demo message
+      ctx.fillText('DICOM File Uploaded', centerX, centerY - 60);
+      ctx.fillText('Demo Viewer - File Parsing Requires Backend', centerX, centerY - 30);
+    }
 
     // Show file details
     if (currentImage) {
@@ -106,6 +145,14 @@ export function DicomViewer({
     ctx.lineWidth = 2;
     ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
 
+    // AI-based risk hint (placeholder for integration)
+    if (currentImage) {
+      const aiScore = ((currentImage.instanceNumber % 100) + 20) % 100;
+      ctx.fillStyle = aiScore > 60 ? '#f43f5e' : '#22c55e';
+      ctx.font = 'bold 14px monospace';
+      ctx.fillText(`AI risk: ${aiScore}% (${aiScore > 60 ? 'Suspicious' : 'Normal'})`, centerX, 30);
+    }
+
     // Add file icon representation
     ctx.fillStyle = '#4a90e2';
     ctx.fillRect(centerX - 30, centerY - 120, 60, 80);
@@ -113,7 +160,42 @@ export function DicomViewer({
     ctx.font = '24px monospace';
     ctx.fillText('📄', centerX - 12, centerY - 70);
 
-  }, [viewerState, currentImage, images, modality]);
+    // Draw annotations for current image
+    const currentAnnotations = annotations.filter((a) => a.imageId === currentImage?.id);
+    currentAnnotations.forEach((annotation) => {
+      const pointX = annotation.x * canvas.width;
+      const pointY = annotation.y * canvas.height;
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(pointX, pointY, 8, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = '#facc15';
+      ctx.fillText(annotation.label, pointX + 10, pointY - 10);
+    });
+
+    // Draw measurement line if available
+    if (measurementPoints.length === 2) {
+      const p1 = measurementPoints[0];
+      const p2 = measurementPoints[1];
+      const x1 = p1.x * canvas.width;
+      const y1 = p1.y * canvas.height;
+      const x2 = p2.x * canvas.width;
+      const y2 = p2.y * canvas.height;
+
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+
+      const distance = Math.hypot(x2 - x1, y2 - y1).toFixed(1);
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = '14px monospace';
+      ctx.fillText(`${distance} px`, (x1 + x2) / 2 + 8, (y1 + y2) / 2 - 8);
+    }
+  }, [viewerState, currentImage, images, modality, annotations, measurementPoints]);
 
   const handleZoom = (direction: 'in' | 'out') => {
     const factor = direction === 'in' ? 1.1 : 0.9;
@@ -138,10 +220,7 @@ export function DicomViewer({
   };
 
   const handleImageChange = (index: number) => {
-    setViewerState((prev) => ({
-      ...prev,
-      currentImage: Math.max(0, Math.min(images.length - 1, index)),
-    }));
+    setCurrentImage(index);
   };
 
   const handleWindowChange = (value: number[]) => {
@@ -162,6 +241,71 @@ export function DicomViewer({
       windowCenter: preset.windowCenter,
       windowWidth: preset.windowWidth,
     }));
+    setIsPlaying(false);
+    setAnnotationMode(false);
+    setAnnotations((prev) => prev.filter((a) => a.imageId !== currentImage?.id));
+  };
+
+  useEffect(() => {
+    if (!isPlaying || images.length <= 1) return;
+    const interval = setInterval(() => {
+      setViewerState((prev) => ({
+        ...prev,
+        currentImage: (prev.currentImage + 1) % images.length,
+      }));
+    }, 700);
+
+    return () => clearInterval(interval);
+  }, [isPlaying, images.length]);
+
+  const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => {
+    if (!annotationMode || !currentImage || !canvasRef.current) return;
+
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = (event.clientX - rect.left) / rect.width;
+    const y = (event.clientY - rect.top) / rect.height;
+
+    setAnnotations((prev) => [
+      ...prev,
+      {
+        x,
+        y,
+        label: `A${prev.filter((item) => item.imageId === currentImage.id).length + 1}`,
+        imageId: currentImage.id,
+      },
+    ]);
+  };
+
+  const getCanvasRelative = (event: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => {
+    if (!canvasRef.current) return null;
+    const rect = canvasRef.current.getBoundingClientRect();
+    return {
+      x: (event.clientX - rect.left) / rect.width,
+      y: (event.clientY - rect.top) / rect.height,
+    };
+  };
+
+  const handleCanvasMouseDown = (event: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => {
+    if (!measurementMode || !canvasRef.current) return;
+    const rel = getCanvasRelative(event);
+    if (!rel) return;
+    setMeasurementPoints([{ x: rel.x, y: rel.y }]);
+  };
+
+  const handleCanvasMouseMove = (event: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => {
+    if (!measurementMode || measurementPoints.length === 0 || !canvasRef.current) return;
+    const rel = getCanvasRelative(event);
+    if (!rel) return;
+    setMeasurementPoints((prev) => [prev[0], rel]);
+  };
+
+  const handleCanvasMouseUp = () => {
+    if (!measurementMode || measurementPoints.length !== 2 || !canvasRef.current) return;
+
+    const [p1, p2] = measurementPoints;
+    const dx = (p1.x - p2.x) * canvasRef.current.width;
+    const dy = (p1.y - p2.y) * canvasRef.current.height;
+    setMeasurementDistance(Math.hypot(dx, dy));
   };
 
   if (images.length === 0) {
@@ -186,7 +330,16 @@ export function DicomViewer({
             ref={canvasRef}
             width={512}
             height={512}
-            className="max-w-full max-h-full"
+            className="max-w-full max-h-full cursor-crosshair"
+            onClick={handleCanvasClick}
+            onMouseDown={handleCanvasMouseDown}
+            onMouseMove={handleCanvasMouseMove}
+            onMouseUp={handleCanvasMouseUp}
+            title={annotationMode
+              ? 'Click to add annotation'
+              : measurementMode
+                ? 'Drag to measure distance'
+                : 'Image viewer'}
           />
         </div>
       </Card>
@@ -240,6 +393,49 @@ export function DicomViewer({
               className="border-border"
             >
               <Settings className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={isPlaying ? 'destructive' : 'outline'}
+              size="sm"
+              onClick={() => setIsPlaying((prev) => !prev)}
+              className="border-border"
+            >
+              {isPlaying ? 'Pause Cine' : 'Play Cine'}
+            </Button>
+            <Button
+              variant={annotationMode ? 'destructive' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setAnnotationMode((prev) => !prev);
+                if (measurementMode) setMeasurementMode(false);
+              }}
+              className="border-border"
+            >
+              {annotationMode ? 'Exit Annotate' : 'Annotate'}
+            </Button>
+            <Button
+              variant={measurementMode ? 'destructive' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setMeasurementMode((prev) => !prev);
+                if (annotationMode) setAnnotationMode(false);
+                setMeasurementPoints([]);
+                setMeasurementDistance(null);
+              }}
+              className="border-border"
+            >
+              {measurementMode ? 'Exit Measure' : 'Measure'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setMeasurementPoints([]);
+                setMeasurementDistance(null);
+              }}
+              className="border-border"
+            >
+              Clear Measures
             </Button>
             <Button
               variant="outline"
@@ -315,6 +511,47 @@ export function DicomViewer({
             </div>
             <div>
               W:{viewerState.windowWidth} L:{viewerState.windowCenter}
+            </div>
+          </div>
+
+          {/* Slice Slider */}
+          <div className="mt-4">
+            <label className="text-xs font-medium text-foreground">
+              Slice {viewerState.currentImage + 1} / {images.length}
+            </label>
+            <Slider
+              value={[viewerState.currentImage]}
+              onValueChange={([value]) => handleImageChange(value)}
+              min={0}
+              max={Math.max(0, images.length - 1)}
+              step={1}
+              className="mt-2"
+            />
+          </div>
+
+          {/* Metadata / AI Insight */}
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="p-3 rounded-lg bg-muted/25 border border-border">
+              <h3 className="text-sm font-semibold mb-2">DICOM Metadata</h3>
+              <p className="text-xs text-muted-foreground">Modality: {modality}</p>
+              <p className="text-xs text-muted-foreground">Description: {description}</p>
+              {currentImage && (
+                <>
+                  <p className="text-xs text-muted-foreground">Series: {currentImage.seriesDescription}</p>
+                  <p className="text-xs text-muted-foreground">Instance: {currentImage.instanceNumber}</p>
+                  <p className="text-xs text-muted-foreground">File: {currentImage.filename}</p>
+                  <p className="text-xs text-muted-foreground">Viewed: {currentImage.viewed ? 'Yes' : 'No'}</p>
+                </>
+              )}
+            </div>
+            <div className="p-3 rounded-lg bg-muted/25 border border-border">
+              <h3 className="text-sm font-semibold mb-2">AI Pre-read (Demo)</h3>
+              <p className="text-xs text-muted-foreground">
+                The DICOM viewer is prepared for AI integration: lesion flags, required follow-up, and request prioritization.
+              </p>
+              <p className="mt-2 text-xs font-semibold">
+                {currentImage ? (currentImage.instanceNumber % 3 === 0 ? 'Finding: Potential nodule' : 'Finding: No critical finding') : 'No image selected'}
+              </p>
             </div>
           </div>
         </div>

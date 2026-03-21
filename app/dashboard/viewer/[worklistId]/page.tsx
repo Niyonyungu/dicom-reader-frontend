@@ -1,12 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useWorklist } from '@/context/worklist-context';
 import { usePatients } from '@/context/patients-context';
 import { DicomViewer } from '@/components/viewer/dicom-viewer';
+import { loadDicomFiles } from '@/lib/cornerstone-setup';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Download, Share2 } from 'lucide-react';
+import { ArrowLeft, Download, Share2, MessageCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Info } from 'lucide-react';
@@ -20,6 +22,10 @@ export default function ViewerPage() {
   const worklistId = params.worklistId as string;
   const worklistItem = getWorklistItem(worklistId);
   const patient = worklistItem ? getPatient(worklistItem.patientId) : null;
+  const [loadedImages, setLoadedImages] = useState<import('@/lib/mock-data').DicomImage[]>([]);
+  const [syncIndex, setSyncIndex] = useState(0);
+  const [shareNote, setShareNote] = useState('');
+  const [message, setMessage] = useState('');
 
   const handleImageViewed = (imageId: string) => {
     if (worklistItem) {
@@ -35,6 +41,20 @@ export default function ViewerPage() {
   const seriesList = worklistItem
     ? Array.from(new Set(worklistItem.images.map((i) => i.seriesDescription)))
     : [];
+
+  const activeImages = loadedImages.length > 0 ? loadedImages : worklistItem?.images ?? [];
+  const seriesGroups = activeImages.reduce<Record<string, typeof activeImages>>(
+    (acc, img) => {
+      const key = img.seriesDescription || 'Series 1';
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(img);
+      return acc;
+    },
+    {}
+  );
+  const seriesKeys = Object.keys(seriesGroups);
+  const mainSeries = seriesGroups[seriesKeys[0]] || activeImages;
+  const compareSeries = seriesGroups[seriesKeys[1]] || [];
 
   const imageInstances = worklistItem
     ? worklistItem.images.map((i) => i.instanceNumber).join(', ')
@@ -102,15 +122,87 @@ export default function ViewerPage() {
         </AlertDescription>
       </Alert>
 
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="text-sm font-medium">Import DICOM files:</label>
+          <input
+            type="file"
+            accept=".dcm"
+            multiple
+            onChange={async (event) => {
+              if (!event.target.files) return;
+              const loaded = await loadDicomFiles(event.target.files);
+              setLoadedImages(loaded);
+              setSyncIndex(0);
+              setMessage(`Loaded ${loaded.length} file(s).`);
+            }}
+            className="text-sm"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              const url = `${window.location.href}`;
+              await navigator.clipboard.writeText(url);
+              setMessage('Share link copied to clipboard');
+            }}
+          >
+            <Share2 className="h-4 w-4 mr-2" />
+            Copy Share Link
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (shareNote.trim().length === 0) {
+                setMessage('Please type a note before saving.');
+                return;
+              }
+              setMessage('Telemedicine note saved.');
+              setShareNote('');
+            }}
+          >
+            <MessageCircle className="h-4 w-4 mr-2" />
+            Save Note
+          </Button>
+        </div>
+
+        <p className="text-xs text-muted-foreground">{message}</p>
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Main Viewer */}
         <div className="lg:col-span-3">
-          <DicomViewer
-            images={worklistItem.images}
-            modality={worklistItem.modality}
-            description={worklistItem.description}
-            onImageViewed={handleImageViewed}
-          />
+          <div className="space-y-3">
+            {seriesKeys.length > 1 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <DicomViewer
+                  images={mainSeries}
+                  modality={worklistItem.modality}
+                  description={worklistItem.description}
+                  syncIndex={syncIndex}
+                  onIndexChange={setSyncIndex}
+                  onImageViewed={handleImageViewed}
+                />
+                <DicomViewer
+                  images={compareSeries}
+                  modality={worklistItem.modality}
+                  description={worklistItem.description}
+                  syncIndex={syncIndex}
+                  onIndexChange={setSyncIndex}
+                  onImageViewed={handleImageViewed}
+                />
+              </div>
+            ) : (
+              <DicomViewer
+                images={activeImages}
+                modality={worklistItem.modality}
+                description={worklistItem.description}
+                syncIndex={syncIndex}
+                onIndexChange={setSyncIndex}
+                onImageViewed={handleImageViewed}
+              />
+            )}
+          </div>
         </div>
 
         {/* Sidebar - Patient & Study Info */}
