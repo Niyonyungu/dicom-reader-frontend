@@ -18,6 +18,7 @@ export default function UploadPage() {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [selectedPatientId, setSelectedPatientId] = useState<string>('');
+  const [selectedPriority, setSelectedPriority] = useState<'low' | 'normal' | 'high' | 'urgent'>('normal');
 
   const handleFilesSelected = (files: File[]) => {
     // Check if a patient is selected
@@ -45,6 +46,7 @@ export default function UploadPage() {
       modality: 'CT', // Default modality
       description: `Uploaded Study - ${files.length} file(s)`,
       status: 'new',
+      priority: selectedPriority,
       imageCount: files.length,
       images: files.map((file, index) => ({
         id: `IMG${Date.now()}-${index}`,
@@ -110,9 +112,9 @@ export default function UploadPage() {
       {/* Patient Selection */}
       <Card className="border-border">
         <CardHeader>
-          <CardTitle className="text-base">Select Patient</CardTitle>
+          <CardTitle className="text-base">Study Details</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="patient-select">Choose the patient for this study</Label>
             <Select value={selectedPatientId} onValueChange={setSelectedPatientId}>
@@ -125,6 +127,20 @@ export default function UploadPage() {
                     {patient.name} (ID: {patient.id})
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="priority-select">Study Priority</Label>
+            <Select value={selectedPriority} onValueChange={(value: 'low' | 'normal' | 'high' | 'urgent') => setSelectedPriority(value)}>
+              <SelectTrigger className="bg-input border-border">
+                <SelectValue placeholder="Select priority..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Low Priority</SelectItem>
+                <SelectItem value="normal">Normal Priority</SelectItem>
+                <SelectItem value="high">High Priority</SelectItem>
+                <SelectItem value="urgent">Urgent</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -25,12 +25,14 @@ interface DicomViewerProps {
   images: DicomImage[];
   modality: string;
   description: string;
+  onImageViewed?: (imageId: string) => void;
 }
 
 export function DicomViewer({
   images,
   modality,
   description,
+  onImageViewed,
 }: DicomViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [viewerState, setViewerState] = useState<ViewerState>(
@@ -39,6 +41,13 @@ export function DicomViewer({
   const [showWindowControls, setShowWindowControls] = useState(false);
 
   const currentImage = images[viewerState.currentImage];
+
+  // Mark current image as viewed
+  useEffect(() => {
+    if (currentImage && !currentImage.viewed && onImageViewed) {
+      onImageViewed(currentImage.id);
+    }
+  }, [currentImage, onImageViewed]);
 
   // Draw image on canvas
   useEffect(() => {
@@ -73,6 +82,23 @@ export function DicomViewer({
       ctx.fillText(`Instance: ${currentImage.instanceNumber}`, centerX, centerY + 35);
       ctx.fillText(`Series: ${currentImage.seriesDescription}`, centerX, centerY + 60);
       ctx.fillText(`Modality: ${modality}`, centerX, centerY + 85);
+
+      // Show viewed status
+      if (currentImage.viewed) {
+        ctx.fillStyle = '#10b981'; // green color
+        ctx.font = 'bold 16px monospace';
+        ctx.fillText('✓ VIEWED', centerX, centerY + 110);
+        if (currentImage.viewedAt) {
+          ctx.font = '12px monospace';
+          ctx.fillStyle = '#6b7280';
+          const viewedDate = new Date(currentImage.viewedAt).toLocaleString();
+          ctx.fillText(`Viewed: ${viewedDate}`, centerX, centerY + 130);
+        }
+      } else {
+        ctx.fillStyle = '#f59e0b'; // amber color
+        ctx.font = 'bold 16px monospace';
+        ctx.fillText('○ NOT VIEWED', centerX, centerY + 110);
+      }
     }
 
     // Add border to indicate this is a file representation

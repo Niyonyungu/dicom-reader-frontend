@@ -11,17 +11,27 @@ interface WorklistTableProps {
 }
 
 export function WorklistTable({ items }: WorklistTableProps) {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'bg-primary/20 text-primary';
-      case 'ongoing':
-        return 'bg-secondary/20 text-secondary';
-      case 'new':
-        return 'bg-accent/20 text-accent';
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'high':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'normal':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'low':
+        return 'bg-gray-100 text-gray-800 border-gray-200';
       default:
-        return 'bg-muted/20 text-muted-foreground';
+        return 'bg-gray-100 text-gray-800 border-gray-200';
     }
+  };
+
+  const getViewedStatus = (images: any[]) => {
+    const viewedCount = images.filter(img => img.viewed).length;
+    const totalCount = images.length;
+    if (viewedCount === 0) return 'Not viewed';
+    if (viewedCount === totalCount) return 'All viewed';
+    return `${viewedCount}/${totalCount} viewed`;
   };
 
   const getModalityColor = (modality: string) => {
@@ -49,6 +59,19 @@ export function WorklistTable({ items }: WorklistTableProps) {
 
   const { getReportsByWorklist } = useReports();
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'ongoing':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'new':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -62,6 +85,9 @@ export function WorklistTable({ items }: WorklistTableProps) {
             </th>
             <th className="px-4 py-3 text-left font-semibold text-foreground">
               Modality
+            </th>
+            <th className="px-4 py-3 text-left font-semibold text-foreground">
+              Priority
             </th>
             <th className="px-4 py-3 text-left font-semibold text-foreground">
               Study Date
@@ -80,6 +106,9 @@ export function WorklistTable({ items }: WorklistTableProps) {
             </th>
             <th className="px-4 py-3 text-left font-semibold text-foreground">
               Status
+            </th>
+            <th className="px-4 py-3 text-left font-semibold text-foreground">
+              Viewed
             </th>
             <th className="px-4 py-3 text-left font-semibold text-foreground">
               Report
@@ -108,6 +137,15 @@ export function WorklistTable({ items }: WorklistTableProps) {
                   {item.modality}
                 </span>
               </td>
+              <td className="px-4 py-3">
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-medium border ${getPriorityColor(
+                    item.priority || 'normal'
+                  )}`}
+                >
+                  {(item.priority || 'normal').charAt(0).toUpperCase() + (item.priority || 'normal').slice(1)}
+                </span>
+              </td>
               <td className="px-4 py-3 text-foreground">{item.studyDate}</td>
               <td className="px-4 py-3 text-foreground">{item.studyTime}</td>
               <td className="px-4 py-3 text-foreground text-xs max-w-xs truncate">
@@ -132,6 +170,9 @@ export function WorklistTable({ items }: WorklistTableProps) {
                 >
                   {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
                 </span>
+              </td>
+              <td className="px-4 py-3 text-foreground text-xs">
+                {getViewedStatus(item.images)}
               </td>
               <td className="px-4 py-3">
                 {getReportsByWorklist(item.id) ? (

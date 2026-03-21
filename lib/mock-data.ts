@@ -2,7 +2,7 @@ export interface User {
   id: number;
   username: string;
   password: string;
-  role: 'user' | 'admin' | 'service';
+  role: 'user' | 'admin' | 'service' | 'imaging-technician' | 'radiographer';
   name: string;
 }
 
@@ -32,6 +32,7 @@ export interface WorklistItem {
   details?: string;
   referringPhysician?: string;
   status: 'new' | 'ongoing' | 'completed';
+  priority: 'low' | 'normal' | 'high' | 'urgent';
   imageCount: number;
   images: DicomImage[];
 }
@@ -44,6 +45,8 @@ export interface DicomImage {
   sliceThickness?: string;
   windowCenter?: number;
   windowWidth?: number;
+  viewed?: boolean;
+  viewedAt?: string;
 }
 
 export interface Report {
@@ -80,6 +83,20 @@ export const mockUsers: User[] = [
     password: 'service123',
     role: 'service',
     name: 'Service Account'
+  },
+  {
+    id: 4,
+    username: 'tech1',
+    password: 'tech123',
+    role: 'imaging-technician',
+    name: 'Sarah Johnson'
+  },
+  {
+    id: 5,
+    username: 'radio1',
+    password: 'radio123',
+    role: 'radiographer',
+    name: 'Mike Davis'
   }
 ];
 
@@ -160,6 +177,7 @@ export const mockWorklist: WorklistItem[] = [
     details: 'Suspected lesion in right frontal lobe; additional sequences acquired.',
     referringPhysician: 'Dr. Alice Wang',
     status: 'completed',
+    priority: 'high',
     imageCount: 45,
     images: [
       {
@@ -169,7 +187,9 @@ export const mockWorklist: WorklistItem[] = [
         seriesDescription: 'T1 Sagittal',
         sliceThickness: '2.0mm',
         windowCenter: 40,
-        windowWidth: 400
+        windowWidth: 400,
+        viewed: true,
+        viewedAt: '2026-03-10T10:15:00Z'
       },
       {
         id: 'IMG002',
@@ -178,7 +198,9 @@ export const mockWorklist: WorklistItem[] = [
         seriesDescription: 'T1 Sagittal',
         sliceThickness: '2.0mm',
         windowCenter: 40,
-        windowWidth: 400
+        windowWidth: 400,
+        viewed: true,
+        viewedAt: '2026-03-10T10:16:00Z'
       },
       {
         id: 'IMG003',
@@ -187,7 +209,8 @@ export const mockWorklist: WorklistItem[] = [
         seriesDescription: 'T1 Sagittal',
         sliceThickness: '2.0mm',
         windowCenter: 40,
-        windowWidth: 400
+        windowWidth: 400,
+        viewed: false
       }
     ]
   },
@@ -202,6 +225,7 @@ export const mockWorklist: WorklistItem[] = [
     details: 'Looking for pulmonary nodules; contrast-enhanced phase included.',
     referringPhysician: 'Dr. Michael Brown',
     status: 'completed',
+    priority: 'normal',
     imageCount: 120,
     images: [
       {
@@ -211,7 +235,9 @@ export const mockWorklist: WorklistItem[] = [
         seriesDescription: 'Chest - Lung Window',
         sliceThickness: '1.0mm',
         windowCenter: -400,
-        windowWidth: 1500
+        windowWidth: 1500,
+        viewed: true,
+        viewedAt: '2026-03-10T11:30:00Z'
       },
       {
         id: 'IMG102',
@@ -220,7 +246,8 @@ export const mockWorklist: WorklistItem[] = [
         seriesDescription: 'Chest - Lung Window',
         sliceThickness: '1.0mm',
         windowCenter: -400,
-        windowWidth: 1500
+        windowWidth: 1500,
+        viewed: false
       }
     ]
   },
@@ -233,6 +260,7 @@ export const mockWorklist: WorklistItem[] = [
     modality: 'XR',
     description: 'Chest X-Ray PA and Lateral',
     status: 'completed',
+    priority: 'urgent',
     imageCount: 2,
     images: [
       {
@@ -241,7 +269,9 @@ export const mockWorklist: WorklistItem[] = [
         filename: 'IMG_201.dcm',
         seriesDescription: 'Chest PA',
         windowCenter: 40,
-        windowWidth: 400
+        windowWidth: 400,
+        viewed: true,
+        viewedAt: '2026-03-09T15:00:00Z'
       },
       {
         id: 'IMG202',
@@ -249,7 +279,9 @@ export const mockWorklist: WorklistItem[] = [
         filename: 'IMG_202.dcm',
         seriesDescription: 'Chest Lateral',
         windowCenter: 40,
-        windowWidth: 400
+        windowWidth: 400,
+        viewed: true,
+        viewedAt: '2026-03-09T15:05:00Z'
       }
     ]
   },
@@ -262,6 +294,7 @@ export const mockWorklist: WorklistItem[] = [
     modality: 'US',
     description: 'Abdominal Ultrasound',
     status: 'ongoing',
+    priority: 'normal',
     imageCount: 25,
     images: [
       {
@@ -269,14 +302,16 @@ export const mockWorklist: WorklistItem[] = [
         instanceNumber: 1,
         filename: 'IMG_301.dcm',
         seriesDescription: 'Liver',
-        sliceThickness: '0.5mm'
+        sliceThickness: '0.5mm',
+        viewed: false
       },
       {
         id: 'IMG302',
         instanceNumber: 2,
         filename: 'IMG_302.dcm',
         seriesDescription: 'Liver',
-        sliceThickness: '0.5mm'
+        sliceThickness: '0.5mm',
+        viewed: false
       }
     ]
   },
@@ -289,6 +324,7 @@ export const mockWorklist: WorklistItem[] = [
     modality: 'MRI',
     description: 'Knee MRI',
     status: 'new',
+    priority: 'low',
     imageCount: 60,
     images: [
       {
@@ -296,7 +332,8 @@ export const mockWorklist: WorklistItem[] = [
         instanceNumber: 1,
         filename: 'IMG_401.dcm',
         seriesDescription: 'T2 Sagittal',
-        sliceThickness: '3.0mm'
+        sliceThickness: '3.0mm',
+        viewed: false
       }
     ]
   },
@@ -309,6 +346,7 @@ export const mockWorklist: WorklistItem[] = [
     modality: 'CT',
     description: 'Abdomen and Pelvis CT',
     status: 'completed',
+    priority: 'normal',
     imageCount: 150,
     images: []
   },
@@ -321,6 +359,7 @@ export const mockWorklist: WorklistItem[] = [
     modality: 'XR',
     description: 'Hand X-Ray',
     status: 'completed',
+    priority: 'low',
     imageCount: 3,
     images: []
   },
@@ -333,6 +372,7 @@ export const mockWorklist: WorklistItem[] = [
     modality: 'MRI',
     description: 'Lumbar Spine MRI',
     status: 'completed',
+    priority: 'normal',
     imageCount: 80,
     images: []
   },
@@ -345,6 +385,7 @@ export const mockWorklist: WorklistItem[] = [
     modality: 'US',
     description: 'Thyroid Ultrasound',
     status: 'completed',
+    priority: 'low',
     imageCount: 12,
     images: []
   },
@@ -357,6 +398,7 @@ export const mockWorklist: WorklistItem[] = [
     modality: 'CT',
     description: 'Head CT',
     status: 'completed',
+    priority: 'normal',
     imageCount: 60,
     images: []
   }

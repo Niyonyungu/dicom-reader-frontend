@@ -14,12 +14,23 @@ import { Info } from 'lucide-react';
 export default function ViewerPage() {
   const params = useParams();
   const router = useRouter();
-  const { getWorklistItem } = useWorklist();
+  const { getWorklistItem, updateWorklistItem } = useWorklist();
   const { getPatient } = usePatients();
 
   const worklistId = params.worklistId as string;
   const worklistItem = getWorklistItem(worklistId);
   const patient = worklistItem ? getPatient(worklistItem.patientId) : null;
+
+  const handleImageViewed = (imageId: string) => {
+    if (worklistItem) {
+      const updatedImages = worklistItem.images.map(img =>
+        img.id === imageId
+          ? { ...img, viewed: true, viewedAt: new Date().toISOString() }
+          : img
+      );
+      updateWorklistItem(worklistId, { images: updatedImages });
+    }
+  };
 
   const seriesList = worklistItem
     ? Array.from(new Set(worklistItem.images.map((i) => i.seriesDescription)))
@@ -98,6 +109,7 @@ export default function ViewerPage() {
             images={worklistItem.images}
             modality={worklistItem.modality}
             description={worklistItem.description}
+            onImageViewed={handleImageViewed}
           />
         </div>
 

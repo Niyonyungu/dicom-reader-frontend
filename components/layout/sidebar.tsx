@@ -17,7 +17,7 @@ interface NavItem {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  roles?: ('user' | 'admin' | 'service')[];
+  roles?: ('user' | 'admin' | 'service' | 'imaging-technician' | 'radiographer')[];
 }
 
 const navItems: NavItem[] = [
@@ -35,22 +35,25 @@ const navItems: NavItem[] = [
     href: '/dashboard/patients',
     label: 'Patients',
     icon: Users,
+    roles: ['admin', 'service', 'imaging-technician'], // Only these roles can manage patients
   },
   {
     href: '/dashboard/upload',
     label: 'Upload DICOM',
     icon: Upload,
+    roles: ['admin', 'service', 'imaging-technician', 'radiographer'], // These roles can upload
   },
   {
-    // reports should be accessible to everyone, not just admin/service
     href: '/dashboard/reports',
     label: 'Reports',
     icon: FileText,
+    roles: ['user', 'admin', 'service', 'radiographer'], // Radiologists and users can create reports
   },
   {
     href: '/dashboard/settings',
     label: 'Settings',
     icon: Settings,
+    roles: ['admin', 'service'], // Only admin/service can access settings
   },
 ];
 
