@@ -535,7 +535,7 @@ export function VolumeRenderer({
 
 // Helper functions
 function drawView(
-    canvasRef: React.RefObject<HTMLCanvasElement>,
+    canvasRef: React.RefObject<HTMLCanvasElement | null>,
     imageData: ImageData,
     view: 'axial' | 'sagittal' | 'coronal',
     sliceIndex: number,

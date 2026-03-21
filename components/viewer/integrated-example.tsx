@@ -63,7 +63,7 @@ export function IntegratedDicomViewer({
     const [activeTab, setActiveTab] = useState('viewer');
     const [showAdvancedTools, setShowAdvancedTools] = useState(!isMobile);
     const [priorImageData, setPriorImageData] = useState<ImageData | undefined>();
-    const [selectedStudyType, setSelectedStudyType] = useState(`${modality}_${studyType}`);
+    const [selectedStudyType, setSelectedStudyType] = useState(modality);
 
     // Track study access in audit log
     useEffect(() => {

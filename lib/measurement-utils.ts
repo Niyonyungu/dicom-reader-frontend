@@ -17,6 +17,7 @@ export interface Measurement {
   imageId: string;
   timestamp: number;
   label: string;
+  metadata?: Record<string, any>;
 }
 
 export interface ROIStatistics {

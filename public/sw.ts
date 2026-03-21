@@ -1,3 +1,5 @@
+/// <reference lib="webworker" />
+
 /**
  * Service Worker for DICOM Viewer - Offline Capability
  * Enables caching, offline browsing, and background sync
@@ -23,7 +25,7 @@ const API_ENDPOINTS_TO_CACHE = [
 ];
 
 // Install event - cache essential files
-self.addEventListener('install', (event: ExtendableEvent) => {
+(self as any).addEventListener('install', (event: any) => {
   console.log('[Service Worker] Installing...');
 
   event.waitUntil(
@@ -31,13 +33,13 @@ self.addEventListener('install', (event: ExtendableEvent) => {
       const cache = await caches.open(RUNTIME_CACHE);
       await cache.addAll(URLS_TO_CACHE);
       console.log('[Service Worker] Files cached');
-      self.skipWaiting();
+      (self as any).skipWaiting();
     })()
   );
 });
 
 // Activate event - clean up old caches
-self.addEventListener('activate', (event: ExtendableEvent) => {
+(self as any).addEventListener('activate', (event: any) => {
   console.log('[Service Worker] Activating...');
 
   event.waitUntil(
@@ -51,14 +53,14 @@ self.addEventListener('activate', (event: ExtendableEvent) => {
           }
         })
       );
-      await self.clients.claim();
+      await (self as any).clients.claim();
       console.log('[Service Worker] Ready to handle requests');
     })()
   );
 });
 
 // Fetch event - implement caching strategies
-self.addEventListener('fetch', (event: FetchEvent) => {
+(self as any).addEventListener('fetch', (event: any) => {
   const { request } = event;
   const url = new URL(request.url);
 
@@ -244,9 +246,9 @@ async function markLogAsSynced(db: IDBDatabase, logId: string): Promise<void> {
 }
 
 // Message handler for communication with client
-self.addEventListener('message', (event: ExtendableMessageEvent) => {
+(self as any).addEventListener('message', (event: any) => {
   if (event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
+    (self as any).skipWaiting();
   }
 
   if (event.data.type === 'GET_CACHE_STATS') {
