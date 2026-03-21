@@ -61,6 +61,14 @@ export function DicomViewer({
     contrast: number;
     noise: number;
   } | null>(null);
+  const [annotations, setAnnotations] = useState<Array<{
+    x: number;
+    y: number;
+    label: string;
+    imageId: string;
+  }>>([]);
+  const [measurementPoints, setMeasurementPoints] = useState<Array<{ x: number; y: number }>>([]);
+  const [measurementDistance, setMeasurementDistance] = useState<number | null>(null);
 
   const currentImage = images[viewerState.currentImage];
 
