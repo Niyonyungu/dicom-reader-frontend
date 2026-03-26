@@ -38,6 +38,7 @@ export default function ViewerPage() {
     }
   };
 
+
   const seriesList = worklistItem
     ? Array.from(new Set(worklistItem.images.map((i) => i.seriesDescription)))
     : [];
@@ -103,7 +104,7 @@ export default function ViewerPage() {
           <div className="flex items-center gap-2 mb-1">
             <h1 className="text-2xl font-bold text-foreground">DICOM Viewer</h1>
             <Badge variant="secondary" className="bg-accent/10 text-accent border-accent/20">
-              Uploaded Study
+              Study
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground">
@@ -165,6 +166,14 @@ export default function ViewerPage() {
             <MessageCircle className="h-4 w-4 mr-2" />
             Save Note
           </Button>
+
+          <div className="w-full border border-border rounded-lg p-3 bg-muted/20">
+            <p className="text-xs font-semibold mb-2">PACS Retrieval</p>
+            <p className="text-xs text-muted-foreground">
+              To retrieve from PACS and populate the worklist, go to the Worklist page and use the PACS Query section.
+              This keeps retrieval in context with worklist selection and supports multiple studies.
+            </p>
+          </div>
         </div>
 
         <p className="text-xs text-muted-foreground">{message}</p>
