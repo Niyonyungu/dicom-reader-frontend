@@ -7,7 +7,9 @@ import {
   ViewerState,
   generateMockDICOMImage,
   getWindowPreset,
+  windowPresets,
 } from '@/lib/cornerstone-setup';
+import { MultiPlanarReconstruction, VolumeRenderer, HounsfieldUnitInspector } from '@/components/viewer/advanced-visualization';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
@@ -61,6 +63,8 @@ export function DicomViewer({
     contrast: number;
     noise: number;
   } | null>(null);
+  const [advancedMode, setAdvancedMode] = useState<'none' | 'mpr' | '3d' | 'hu'>('none');
+  const [windowPresetName, setWindowPresetName] = useState<string>('default');
   const [annotations, setAnnotations] = useState<Array<{
     x: number;
     y: number;
@@ -71,6 +75,9 @@ export function DicomViewer({
   const [measurementDistance, setMeasurementDistance] = useState<number | null>(null);
 
   const currentImage = images[viewerState.currentImage];
+  const volumeImageStack = images
+    .map((img) => img.pixelData)
+    .filter((pd): pd is ImageData => !!pd);
 
   // Sync with external index for multi-viewport sync
   useEffect(() => {
@@ -81,6 +88,39 @@ export function DicomViewer({
       }));
     }
   }, [syncIndex, images.length, viewerState.currentImage]);
+
+  // Load and apply persisted window preset
+  useEffect(() => {
+    try {
+      const savedPreset = localStorage.getItem('dicomViewerWindowPreset');
+      if (savedPreset) {
+        setWindowPresetName(savedPreset);
+        const preset = getWindowPreset(modality, savedPreset);
+        setViewerState((prev) => ({
+          ...prev,
+          windowCenter: preset.windowCenter,
+          windowWidth: preset.windowWidth,
+        }));
+      }
+    } catch {
+      // ignore storage access errors
+    }
+  }, [modality]);
+
+  const applyWindowPreset = (preset: string) => {
+    const selectedPreset = getWindowPreset(modality, preset);
+    setViewerState((prev) => ({
+      ...prev,
+      windowCenter: selectedPreset.windowCenter,
+      windowWidth: selectedPreset.windowWidth,
+    }));
+    setWindowPresetName(preset);
+    try {
+      localStorage.setItem('dicomViewerWindowPreset', preset);
+    } catch {
+      // ignore
+    }
+  };
 
   const setCurrentImage = (index: number) => {
     const bounded = Math.max(0, Math.min(images.length - 1, index));
@@ -261,15 +301,13 @@ export function DicomViewer({
   };
 
   const handleReset = () => {
-    const preset = getWindowPreset(modality, 'default');
+    applyWindowPreset(windowPresetName);
     setViewerState((prev) => ({
       ...prev,
       zoom: 1,
       rotation: 0,
       isFlipped: false,
       pan: { x: 0, y: 0 },
-      windowCenter: preset.windowCenter,
-      windowWidth: preset.windowWidth,
     }));
     setIsPlaying(false);
     setAnnotationMode(false);
@@ -523,6 +561,18 @@ export function DicomViewer({
             >
               <Maximize2 className="h-4 w-4" />
             </Button>
+            <select
+              value={windowPresetName}
+              onChange={(e) => applyWindowPreset(e.target.value)}
+              className="rounded border border-border bg-surface text-xs py-1 px-2"
+              title="Window/Level Preset"
+            >
+              {Object.keys(windowPresets[modality.toLowerCase() as keyof typeof windowPresets] || windowPresets.xray).map((preset) => (
+                <option key={preset} value={preset}>
+                  {preset}
+                </option>
+              ))}
+            </select>
             <Button
               variant="outline"
               size="sm"
@@ -531,6 +581,30 @@ export function DicomViewer({
               className="border-border"
             >
               <Settings className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={advancedMode === 'mpr' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setAdvancedMode((prev) => (prev === 'mpr' ? 'none' : 'mpr'))}
+              className="border-border"
+            >
+              MPR
+            </Button>
+            <Button
+              variant={advancedMode === '3d' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setAdvancedMode((prev) => (prev === '3d' ? 'none' : '3d'))}
+              className="border-border"
+            >
+              3D
+            </Button>
+            <Button
+              variant={advancedMode === 'hu' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setAdvancedMode((prev) => (prev === 'hu' ? 'none' : 'hu'))}
+              className="border-border"
+            >
+              HU
             </Button>
             <Button
               variant={isPlaying ? 'destructive' : 'outline'}
@@ -836,6 +910,35 @@ export function DicomViewer({
               </Button>
             </div>
           </div>
+
+          {/* Advanced Visualization Modes */}
+          {advancedMode !== 'none' && (
+            <div className="mt-4">
+              {advancedMode === 'mpr' && volumeImageStack.length > 0 && (
+                <MultiPlanarReconstruction imageStack={volumeImageStack} sliceIndex={viewerState.currentImage} />
+              )}
+              {advancedMode === '3d' && volumeImageStack.length > 0 && (
+                <VolumeRenderer imageStack={volumeImageStack} />
+              )}
+              {advancedMode === 'hu' && currentImage?.pixelData && (
+                <HounsfieldUnitInspector
+                  pixelData={currentImage.pixelData}
+                  rescaleIntercept={currentImage.rescaleIntercept ?? -1024}
+                  rescaleSlope={currentImage.rescaleSlope ?? 1}
+                />
+              )}
+              {advancedMode === 'mpr' && !currentImage?.pixelData && (
+                <p className="text-sm text-muted-foreground">MPR requires loaded pixel data in current slice.</p>
+              )}
+              {advancedMode === 'hu' && !currentImage?.pixelData && (
+                <p className="text-sm text-muted-foreground">HU inspection requires loaded pixel data.</p>
+              )}
+              {advancedMode === '3d' && volumeImageStack.length === 0 && (
+                <p className="text-sm text-muted-foreground">3D rendering requires a stack of image data across slices.</p>
+              )}
+            </div>
+          )}
+
         </div>
       </Card>
     </div>

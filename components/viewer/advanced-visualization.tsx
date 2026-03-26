@@ -13,42 +13,48 @@ import {
     Plus,
     Minus,
 } from 'lucide-react';
+import * as THREE from 'three';
+import { calculateHU, categorizeHU, calculateROIStatistics } from '@/lib/measurement-utils';
 
 /**
  * Multi-Planar Reconstruction (MPR) Component
  * Generates coronal, sagittal, and oblique views from axial data
  */
 export function MultiPlanarReconstruction({
-    imageData,
+    imageStack,
     canvasWidth = 512,
     canvasHeight = 512,
     sliceIndex = 0,
+    sampleX = 0.5,
+    sampleY = 0.5,
 }: {
-    imageData?: ImageData;
+    imageStack?: ImageData[];
     canvasWidth?: number;
     canvasHeight?: number;
     sliceIndex?: number;
+    sampleX?: number;
+    sampleY?: number;
 }) {
     const [activeView, setActiveView] = useState<'axial' | 'sagittal' | 'coronal'>('axial');
     const [reconstructionQuality, setReconstructionQuality] = useState(100);
+    const [localSlice, setLocalSlice] = useState<number>(sliceIndex);
+    const [localSampleX, setLocalSampleX] = useState<number>(sampleX);
+    const [localSampleY, setLocalSampleY] = useState<number>(sampleY);
     const canvasRefs = {
         axial: useRef<HTMLCanvasElement>(null),
         sagittal: useRef<HTMLCanvasElement>(null),
         coronal: useRef<HTMLCanvasElement>(null),
     };
 
+    const axialData = imageStack?.[localSlice];
+    const sagittalData = imageStack ? reconstructSagittal(imageStack, localSampleX) : undefined;
+    const coronalData = imageStack ? reconstructCoronal(imageStack, localSampleY) : undefined;
+
     useEffect(() => {
-        if (!imageData) return;
-
-        // Draw axial view (original)
-        drawView(canvasRefs.axial, imageData, 'axial', sliceIndex, canvasWidth, canvasHeight);
-
-        // Draw sagittal view (side view - reconstructed)
-        drawView(canvasRefs.sagittal, imageData, 'sagittal', sliceIndex, canvasWidth, canvasHeight);
-
-        // Draw coronal view (front view - reconstructed)
-        drawView(canvasRefs.coronal, imageData, 'coronal', sliceIndex, canvasWidth, canvasHeight);
-    }, [imageData, sliceIndex, reconstructionQuality]);
+        if (axialData) drawView(canvasRefs.axial, axialData, 'axial', localSlice, canvasWidth, canvasHeight);
+        if (sagittalData) drawView(canvasRefs.sagittal, sagittalData, 'sagittal', localSlice, canvasWidth, canvasHeight);
+        if (coronalData) drawView(canvasRefs.coronal, coronalData, 'coronal', localSlice, canvasWidth, canvasHeight);
+    }, [axialData, sagittalData, coronalData, localSlice, reconstructionQuality]);
 
     const downloadView = (view: 'axial' | 'sagittal' | 'coronal') => {
         const canvas = canvasRefs[view].current;
@@ -62,23 +68,62 @@ export function MultiPlanarReconstruction({
 
     return (
         <Card className="border-border p-4 space-y-4">
-            <div className="flex items-center justify-between">
-                <h3 className="font-semibold flex items-center gap-2">
-                    <Layers className="h-4 w-4" />
-                    Multi-Planar Reconstruction (MPR)
-                </h3>
-                <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Quality:</span>
-                    <Slider
-                        value={[reconstructionQuality]}
-                        onValueChange={([v]) => setReconstructionQuality(v)}
-                        min={50}
-                        max={100}
-                        step={10}
-                        className="w-24"
-                    />
-                    <span className="text-xs font-medium w-8">{reconstructionQuality}%</span>
+            <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                    <h3 className="font-semibold flex items-center gap-2">
+                        <Layers className="h-4 w-4" />
+                        Multi-Planar Reconstruction (MPR)
+                    </h3>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Quality:</span>
+                        <Slider
+                            value={[reconstructionQuality]}
+                            onValueChange={([v]) => setReconstructionQuality(v)}
+                            min={50}
+                            max={100}
+                            step={10}
+                            className="w-24"
+                        />
+                        <span className="text-xs font-medium w-8">{reconstructionQuality}%</span>
+                    </div>
                 </div>
+
+                {imageStack?.length ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                        <div>
+                            <label>Slice: {localSlice + 1}/{imageStack.length}</label>
+                            <Slider
+                                value={[localSlice]}
+                                onValueChange={([v]) => setLocalSlice(v)}
+                                min={0}
+                                max={Math.max(0, imageStack.length - 1)}
+                                step={1}
+                            />
+                        </div>
+                        <div>
+                            <label>Sagittal position X: {(localSampleX * 100).toFixed(0)}%</label>
+                            <Slider
+                                value={[Math.round(localSampleX * 100)]}
+                                onValueChange={([v]) => setLocalSampleX(v / 100)}
+                                min={0}
+                                max={100}
+                                step={1}
+                            />
+                        </div>
+                        <div>
+                            <label>Coronal position Y: {(localSampleY * 100).toFixed(0)}%</label>
+                            <Slider
+                                value={[Math.round(localSampleY * 100)]}
+                                onValueChange={([v]) => setLocalSampleY(v / 100)}
+                                min={0}
+                                max={100}
+                                step={1}
+                            />
+                        </div>
+                    </div>
+                ) : (
+                    <div className="text-xs text-muted-foreground">No image stack available for MPR.</div>
+                )}
             </div>
 
             <Tabs value={activeView} onValueChange={(v: any) => setActiveView(v)}>
@@ -411,60 +456,94 @@ export function VolumeRenderer({
     canvasWidth?: number;
     canvasHeight?: number;
 }) {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
     const [rotationX, setRotationX] = useState(0);
     const [rotationY, setRotationY] = useState(0);
-    const [zoomLevel, setZoomLevel] = useState(100);
+    const [zoomLevel, setZoomLevel] = useState(1);
+    const sceneRef = useRef<THREE.Scene | null>(null);
+    const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+    const groupRef = useRef<THREE.Group | null>(null);
+    const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
 
     useEffect(() => {
-        if (!canvasRef.current || !imageStack || imageStack.length === 0) return;
+        if (!containerRef.current || !imageStack || imageStack.length === 0) return;
 
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
+        const width = canvasWidth;
+        const height = canvasHeight;
 
-        // Simple 3D projection: blend multiple slices with rotation
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(width, height);
+        renderer.setClearColor(0x000000, 1);
 
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        const scale = zoomLevel / 100;
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(35, width / height, 0.1, 4000);
+        camera.position.set(0, 0, 800);
 
-        // Draw projected slices
-        imageStack.forEach((imageData, index) => {
-            const alpha = (1 / imageStack.length) * 0.7;
-            ctx.globalAlpha = alpha;
+        const light = new THREE.AmbientLight(0xffffff, 1);
+        scene.add(light);
 
-            // Apply basic 3D transformation
-            const offsetX = Math.sin((rotationY * Math.PI) / 180) * (index - imageStack.length / 2) * 2;
-            const offsetY = Math.sin((rotationX * Math.PI) / 180) * (index - imageStack.length / 2) * 2;
+        const group = new THREE.Group();
+        const spacing = 1.2;
 
+        imageStack.forEach((slice, i) => {
             const tmpCanvas = document.createElement('canvas');
-            tmpCanvas.width = imageData.width;
-            tmpCanvas.height = imageData.height;
+            tmpCanvas.width = slice.width;
+            tmpCanvas.height = slice.height;
             const tmpCtx = tmpCanvas.getContext('2d');
-            if (tmpCtx) {
-                tmpCtx.putImageData(imageData, 0, 0);
-                ctx.drawImage(
-                    tmpCanvas,
-                    centerX - (imageData.width * scale) / 2 + offsetX,
-                    centerY - (imageData.height * scale) / 2 + offsetY,
-                    imageData.width * scale,
-                    imageData.height * scale
-                );
-            }
+            if (!tmpCtx) return;
+            tmpCtx.putImageData(slice, 0, 0);
+
+            const texture = new THREE.CanvasTexture(tmpCanvas);
+            texture.minFilter = THREE.LinearFilter;
+            texture.magFilter = THREE.LinearFilter;
+
+            const plane = new THREE.Mesh(
+                new THREE.PlaneGeometry(slice.width * 1.0, slice.height * 1.0),
+                new THREE.MeshBasicMaterial({ map: texture, transparent: true, opacity: 0.7 })
+            );
+
+            plane.position.z = (i - imageStack.length / 2) * spacing;
+            group.add(plane);
         });
 
-        ctx.globalAlpha = 1;
+        scene.add(group);
+        containerRef.current.innerHTML = '';
+        containerRef.current.appendChild(renderer.domElement);
 
-        // Draw rotation axes indicator
-        ctx.strokeStyle = '#888888';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, 30, 0, Math.PI * 2);
-        ctx.stroke();
-    }, [imageStack, rotationX, rotationY, zoomLevel]);
+        sceneRef.current = scene;
+        cameraRef.current = camera;
+        groupRef.current = group;
+        rendererRef.current = renderer;
+
+        const animate = () => {
+            if (!groupRef.current || !cameraRef.current || !rendererRef.current) return;
+
+            groupRef.current.rotation.x = (rotationX * Math.PI) / 180;
+            groupRef.current.rotation.y = (rotationY * Math.PI) / 180;
+            cameraRef.current.position.z = 800 / zoomLevel;
+            cameraRef.current.lookAt(0, 0, 0);
+
+            rendererRef.current.render(sceneRef.current as THREE.Scene, cameraRef.current);
+            requestAnimationFrame(animate);
+        };
+
+        animate();
+
+        return () => {
+            renderer.dispose();
+            group.clear();
+            scene.clear();
+        };
+    }, [imageStack]);
+
+    useEffect(() => {
+        if (!groupRef.current || !cameraRef.current || !rendererRef.current) return;
+
+        groupRef.current.rotation.x = (rotationX * Math.PI) / 180;
+        groupRef.current.rotation.y = (rotationY * Math.PI) / 180;
+        cameraRef.current.position.z = 800 / zoomLevel;
+        rendererRef.current.render(sceneRef.current as THREE.Scene, cameraRef.current);
+    }, [rotationX, rotationY, zoomLevel]);
 
     return (
         <Card className="border-border p-4 space-y-4">
@@ -473,64 +552,248 @@ export function VolumeRenderer({
                 3D Volume Rendering
             </h3>
 
+            <div ref={containerRef} className="bg-black rounded-lg overflow-hidden flex items-center justify-center" style={{ height: '300px' }} />
+
+            <div className="space-y-3">
+                <div>
+                    <label className="text-sm font-medium mb-2 block">Rotation X: {rotationX}°</label>
+                    <Slider value={[rotationX]} onValueChange={([v]) => setRotationX(v)} min={-180} max={180} step={5} />
+                </div>
+                <div>
+                    <label className="text-sm font-medium mb-2 block">Rotation Y: {rotationY}°</label>
+                    <Slider value={[rotationY]} onValueChange={([v]) => setRotationY(v)} min={-180} max={180} step={5} />
+                </div>
+                <div>
+                    <label className="text-sm font-medium mb-2 block">Zoom: {(zoomLevel * 100).toFixed(0)}%</label>
+                    <Slider value={[zoomLevel * 100]} onValueChange={([v]) => setZoomLevel(v / 100)} min={40} max={200} step={5} />
+                </div>
+            </div>
+
+            <div className="text-xs text-muted-foreground p-2 bg-muted/25 rounded border border-border">
+                <p className="font-semibold mb-1">Volume Rendering:</p>
+                <p>Using Three.js planes stack for volumetric slice review</p>
+            </div>
+        </Card>
+    );
+}
+
+export function HounsfieldUnitInspector({
+    pixelData,
+    rescaleIntercept = -1024,
+    rescaleSlope = 1,
+    canvasWidth = 512,
+    canvasHeight = 512,
+}: {
+    pixelData?: ImageData;
+    rescaleIntercept?: number;
+    rescaleSlope?: number;
+    canvasWidth?: number;
+    canvasHeight?: number;
+}) {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [selectedHU, setSelectedHU] = useState<number | null>(null);
+    const [hoverHU, setHoverHU] = useState<number | null>(null);
+    const [coords, setCoords] = useState<{ x: number; y: number } | null>(null);
+    const [roiStart, setRoiStart] = useState<{ x: number; y: number } | null>(null);
+    const [roiEnd, setRoiEnd] = useState<{ x: number; y: number } | null>(null);
+    const [roiStats, setRoiStats] = useState<ReturnType<typeof calculateROIStatistics> | null>(null);
+    const [roiMode, setRoiMode] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
+
+    useEffect(() => {
+        if (!canvasRef.current || !pixelData) return;
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const tmpCanvas = document.createElement('canvas');
+        tmpCanvas.width = pixelData.width;
+        tmpCanvas.height = pixelData.height;
+        const tmpCtx = tmpCanvas.getContext('2d');
+        if (tmpCtx) {
+            tmpCtx.putImageData(pixelData, 0, 0);
+            ctx.drawImage(tmpCanvas, 0, 0, canvas.width, canvas.height);
+        }
+
+        if (hoverHU !== null && coords) {
+            ctx.strokeStyle = '#f43f5e';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(coords.x * canvas.width, coords.y * canvas.height, 8, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        if (roiStart && roiEnd) {
+            const x1 = roiStart.x * canvas.width;
+            const y1 = roiStart.y * canvas.height;
+            const x2 = roiEnd.x * canvas.width;
+            const y2 = roiEnd.y * canvas.height;
+            ctx.strokeStyle = '#22c55e';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 3]);
+            ctx.strokeRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1));
+            ctx.setLineDash([]);
+        }
+    }, [pixelData, hoverHU, coords, roiStart, roiEnd]);
+
+    const getHUAtPosition = (x: number, y: number) => {
+        if (!pixelData) return null;
+        const px = Math.floor(x * pixelData.width);
+        const py = Math.floor(y * pixelData.height);
+        if (px < 0 || py < 0 || px >= pixelData.width || py >= pixelData.height) return null;
+        const idx = (py * pixelData.width + px) * 4;
+        const grayscale = (pixelData.data[idx] + pixelData.data[idx + 1] + pixelData.data[idx + 2]) / 3;
+        return calculateHU(grayscale, rescaleSlope, rescaleIntercept);
+    };
+
+    const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
+        if (!canvasRef.current) return;
+        const rect = canvasRef.current.getBoundingClientRect();
+        const x = (event.clientX - rect.left) / rect.width;
+        const y = (event.clientY - rect.top) / rect.height;
+        const hu = getHUAtPosition(x, y);
+        setHoverHU(hu);
+        setCoords({ x, y });
+
+        if (roiMode && isDragging) {
+            setRoiEnd({ x, y });
+        }
+    };
+
+    const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>) => {
+        if (!roiMode || !canvasRef.current) return;
+        const rect = canvasRef.current.getBoundingClientRect();
+        setIsDragging(true);
+        setRoiStart({ x: (event.clientX - rect.left) / rect.width, y: (event.clientY - rect.top) / rect.height });
+        setRoiEnd(null);
+        setRoiStats(null);
+    };
+
+    const handleMouseUp = () => {
+        if (!roiMode || !roiStart || !roiEnd || !pixelData) {
+            setIsDragging(false);
+            return;
+        }
+
+        const vertices = [
+            roiStart,
+            { x: roiEnd.x, y: roiStart.y },
+            roiEnd,
+            { x: roiStart.x, y: roiEnd.y },
+        ];
+
+        const stats = calculateROIStatistics(pixelData, vertices, pixelData.width, pixelData.height);
+        setRoiStats(stats);
+        setIsDragging(false);
+    };
+
+    const handleClick = () => {
+        if (!coords) return;
+        const hu = getHUAtPosition(coords.x, coords.y);
+        setSelectedHU(hu);
+    };
+
+    return (
+        <Card className="border-border p-4 space-y-3">
+            <h3 className="font-semibold flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Hounsfield Unit (HU) Inspector
+            </h3>
+
             <div className="bg-black rounded-lg overflow-hidden flex items-center justify-center" style={{ height: '300px' }}>
                 <canvas
                     ref={canvasRef}
                     width={canvasWidth}
                     height={canvasHeight}
                     className="max-w-full max-h-full"
-                    title="3D volume rendering"
+                    title="HU pixel inspector"
+                    onMouseMove={handleMouseMove}
+                    onMouseDown={handleMouseDown}
+                    onMouseUp={handleMouseUp}
+                    onClick={handleClick}
                 />
             </div>
 
-            <div className="space-y-3">
-                <div>
-                    <label className="text-sm font-medium mb-2 block">
-                        Rotation X: {rotationX}°
-                    </label>
-                    <Slider
-                        value={[rotationX]}
-                        onValueChange={([v]) => setRotationX(v)}
-                        min={-180}
-                        max={180}
-                        step={10}
-                    />
-                </div>
+            <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground">
+                <p>Hover HU: {hoverHU !== null ? hoverHU.toFixed(1) : 'N/A'}</p>
+                <p>Selected HU: {selectedHU !== null ? `${selectedHU.toFixed(1)} (${categorizeHU(selectedHU)})` : 'Click to pick'}</p>
+            </div>
 
-                <div>
-                    <label className="text-sm font-medium mb-2 block">
-                        Rotation Y: {rotationY}°
-                    </label>
-                    <Slider
-                        value={[rotationY]}
-                        onValueChange={([v]) => setRotationY(v)}
-                        min={-180}
-                        max={180}
-                        step={10}
-                    />
-                </div>
-
-                <div>
-                    <label className="text-sm font-medium mb-2 block">
-                        Zoom: {zoomLevel}%
-                    </label>
-                    <Slider
-                        value={[zoomLevel]}
-                        onValueChange={([v]) => setZoomLevel(v)}
-                        min={50}
-                        max={200}
-                        step={10}
-                    />
-                </div>
+            <div className="flex items-center gap-2">
+                <Button
+                    variant={roiMode ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setRoiMode((prev) => !prev)}
+                    className="border-border"
+                >
+                    {roiMode ? 'ROI Mode (On)' : 'ROI Mode (Off)'}
+                </Button>
+                {roiStats && (
+                    <p className="text-xs text-muted-foreground">
+                        ROI: mean {roiStats.mean.toFixed(1)}, std {roiStats.stdDev.toFixed(1)}, min {roiStats.min.toFixed(1)}, max {roiStats.max.toFixed(1)}
+                    </p>
+                )}
             </div>
 
             <div className="text-xs text-muted-foreground p-2 bg-muted/25 rounded border border-border">
-                <p className="font-semibold mb-1">Volume Rendering:</p>
-                <p>For production use, integrate with libraries like</p>
-                <p>VTK.js, Babylon.js, or Three.js for real 3D rendering</p>
+                <p className="font-semibold mb-1">HU Ranges:</p>
+                <p>• Air: -1024 to -500</p>
+                <p>• Lung: -500 to -100</p>
+                <p>• Fat: -100 to 0</p>
+                <p>• Water: 0 to 50</p>
+                <p>• Bone: 300+</p>
             </div>
         </Card>
     );
+}
+
+function reconstructSagittal(imageStack: ImageData[], xNorm: number): ImageData | null {
+    if (!imageStack || imageStack.length === 0) return null;
+    const depth = imageStack.length;
+    const width = depth;
+    const height = imageStack[0].height;
+    const x = Math.floor(Math.min(1, Math.max(0, xNorm)) * (imageStack[0].width - 1));
+
+    const output = new ImageData(width, height);
+
+    for (let z = 0; z < depth; z++) {
+        const slice = imageStack[z];
+        for (let y = 0; y < height; y++) {
+            const srcIndex = (y * slice.width + x) * 4;
+            const dstIndex = (y * width + z) * 4;
+            output.data[dstIndex] = slice.data[srcIndex];
+            output.data[dstIndex + 1] = slice.data[srcIndex + 1];
+            output.data[dstIndex + 2] = slice.data[srcIndex + 2];
+            output.data[dstIndex + 3] = slice.data[srcIndex + 3];
+        }
+    }
+
+    return output;
+}
+
+function reconstructCoronal(imageStack: ImageData[], yNorm: number): ImageData | null {
+    if (!imageStack || imageStack.length === 0) return null;
+    const depth = imageStack.length;
+    const width = imageStack[0].width;
+    const height = depth;
+    const y = Math.floor(Math.min(1, Math.max(0, yNorm)) * (imageStack[0].height - 1));
+
+    const output = new ImageData(width, height);
+
+    for (let z = 0; z < depth; z++) {
+        const slice = imageStack[z];
+        for (let x = 0; x < width; x++) {
+            const srcIndex = (y * slice.width + x) * 4;
+            const dstIndex = (z * width + x) * 4;
+            output.data[dstIndex] = slice.data[srcIndex];
+            output.data[dstIndex + 1] = slice.data[srcIndex + 1];
+            output.data[dstIndex + 2] = slice.data[srcIndex + 2];
+            output.data[dstIndex + 3] = slice.data[srcIndex + 3];
+        }
+    }
+
+    return output;
 }
 
 // Helper functions

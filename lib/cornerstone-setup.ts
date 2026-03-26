@@ -11,6 +11,8 @@ export interface CornerstoneImage {
   windowWidth: number;
   sliceThickness?: string;
   pixelData?: ImageData;
+  rescaleSlope?: number;
+  rescaleIntercept?: number;
 }
 
 declare global {
@@ -146,6 +148,8 @@ export async function loadDicomFiles(files: FileList | File[]): Promise<Cornerst
       seriesDescription,
       windowCenter: 40,
       windowWidth: 400,
+      rescaleSlope: 1,
+      rescaleIntercept: -1024,
       pixelData,
     });
   }
