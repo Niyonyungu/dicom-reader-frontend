@@ -22,6 +22,8 @@ Requirements:
 - Pillow for image manipulation
 - Redis for caching
 - Celery for async tasks
+- three.js integration for 3D visualization (optional, for advanced features)
+- NumPy for advanced image processing (MPR, HU calculations)
 
 Create:
 1. requirements.txt with all dependencies and versions
@@ -493,21 +495,114 @@ Features:
 - User can only see own measurements (except radiologists can see all under their studies)
 - Audit logging for all operations
 
-Point format:
-{
-  "x": 100,  // pixel coordinates
-  "y": 200
+### Prompt 14: PACS Query Endpoints
+
+```
+
+Create PACS query and retrieval API endpoints.
+
+Endpoints:
+POST /api/v1/pacs/query - Query PACS for studies
+Request: {
+host: string,
+port: number,
+aeTitle: string,
+patientId?: string,
+patientName?: string,
+studyUID?: string
 }
+Response: Array of study metadata
+
+POST /api/v1/pacs/retrieve - Retrieve study from PACS
+Request: {
+host: string,
+port: number,
+aeTitle: string,
+studyUID: string,
+destinationPath?: string
+}
+Response: { status: string, filesRetrieved: number, taskId: string }
+
+GET /api/v1/pacs/connections - List saved PACS connections
+POST /api/v1/pacs/connections - Save PACS connection config
+PUT /api/v1/pacs/connections/{id} - Update connection
+DELETE /api/v1/pacs/connections/{id} - Delete connection
+
+Create Pydantic schemas:
+
+- PACSConnection
+- PACSQueryRequest
+- PACSRetrieveRequest
+- StudyMetadata (from PACS response)
+
+Features:
+
+- Async processing for large study retrievals
+- Progress tracking with Celery
+- Connection validation before queries
+- Error handling for PACS communication failures
+- Support for multiple PACS systems
+- Secure storage of PACS credentials (encrypted)
+
+### Prompt 15: Advanced Visualization Endpoints
+
+```
+Create advanced visualization API endpoints for 3D, MPR, and HU analysis.
+
+Endpoints:
+GET /api/v1/visualization/study/{study_id}/volume - Get volume data for 3D rendering
+  Query params: format (json|binary), compression (none|gzip)
+  Response: Volume data array or binary blob
+
+GET /api/v1/visualization/study/{study_id}/mpr - Get MPR reconstruction data
+  Query params: plane (axial|sagittal|coronal), slice_index, thickness
+  Response: 2D image data for specified plane
+
+GET /api/v1/visualization/instance/{instance_id}/hu - Get HU analysis data
+  Query params: roi_x, roi_y, roi_width, roi_height
+  Response: { mean: number, std: number, min: number, max: number, histogram: [] }
+
+POST /api/v1/visualization/study/{study_id}/fusion - Create image fusion
+  Request: { base_instance_id, overlay_instance_id, opacity, blend_mode }
+  Response: Fused image data
+
+GET /api/v1/visualization/presets - Get windowing presets
+  Response: Array of { name, window_center, window_width, modality }
+
+Create Pydantic schemas:
+- VolumeData
+- MPRData
+- HUAnalysis
+- FusionRequest
+- WindowPreset
+
+Features:
+- Volume reconstruction from DICOM series
+- Multi-planar reconstruction (MPR)
+- Hounsfield Unit calculations and ROI statistics
+- Image fusion capabilities
+- Windowing presets for different modalities
+- Caching for expensive computations
+- Support for large datasets (streaming responses)
+
+Use NumPy for 3D volume operations, SciPy for interpolation.
+Return data in format compatible with Three.js and Canvas rendering.
+```
+
+---
+
 ```
 
 ### Prompt 14: Measurement Calculation Engine
 
 ```
+
 Create measurement calculation engine.
 
 Create file: app/services/measurement_engine.py
 
 Functions:
+
 1. calculate_distance(point1, point2, mm_per_pixel) -> float
    - point1, point2 format: {"x": int, "y": int}
    - mm_per_pixel: calibration from DICOM pixel spacing
@@ -530,7 +625,7 @@ Functions:
 
 5. calculate_hu_values(pixel_array, intercept, slope) -> dict
    - Convert pixel values to Hounsfield Units
-   - HU = pixel_value * slope + intercept
+   - HU = pixel_value \* slope + intercept
    - Return HU statistics
 
 6. get_pixel_spacing(dicom_file) -> (float, float)
@@ -539,17 +634,18 @@ Functions:
 
 Response format:
 {
-  "distance": 45.5,  // mm
-  "angle": 90.0,  // degrees
-  "area": 1234.5,  // mm²
-  "roi_statistics": {
-    "mean_hu": 50,
-    "std_dev": 15,
-    "min_hu": 20,
-    "max_hu": 85,
-    "area": 500
-  }
+"distance": 45.5, // mm
+"angle": 90.0, // degrees
+"area": 1234.5, // mm²
+"roi_statistics": {
+"mean_hu": 50,
+"std_dev": 15,
+"min_hu": 20,
+"max_hu": 85,
+"area": 500
 }
+}
+
 ```
 
 ---
@@ -559,6 +655,7 @@ Response format:
 ### Prompt 15: Annotations Endpoints
 
 ```
+
 Create annotation API endpoints.
 
 Annotations: User-drawn text/drawings on images.
@@ -573,11 +670,13 @@ GET /api/v1/annotations/instance/{instance_id} - Get instance annotations
 GET /api/v1/annotations/study/{study_id} - Get study annotations
 
 Create Pydantic schemas:
+
 - AnnotationCreate
 - AnnotationUpdate
 - AnnotationResponse
 
 Fields:
+
 - id (UUID)
 - instance_id
 - user_id (creator)
@@ -588,6 +687,7 @@ Fields:
 - created_at, updated_at
 
 Features:
+
 - Pixel-coordinate based positioning
 - Color selection by user
 - User can edit own annotations
@@ -597,17 +697,18 @@ Features:
 
 Return format:
 [
-  {
-    "id": "ann_123",
-    "instance_id": "inst_456",
-    "text": "Suspicious nodule",
-    "x": 250,
-    "y": 180,
-    "color": "#FF0000",
-    "created_by": "Dr. John Smith",
-    "created_at": "2026-03-21T10:30:00Z"
-  }
+{
+"id": "ann_123",
+"instance_id": "inst_456",
+"text": "Suspicious nodule",
+"x": 250,
+"y": 180,
+"color": "#FF0000",
+"created_by": "Dr. John Smith",
+"created_at": "2026-03-21T10:30:00Z"
+}
 ]
+
 ```
 
 ---
@@ -617,6 +718,7 @@ Return format:
 ### Prompt 16: Report Management Endpoints
 
 ```
+
 Create report generation and management endpoints.
 
 Reports are radiologist findings and impressions for studies.
@@ -632,12 +734,14 @@ POST /api/v1/reports/{id}/sign - Sign/finalize report
 GET /api/v1/reports/study/{study_id} - Get study reports
 
 Create Pydantic schemas:
+
 - ReportCreate
 - ReportUpdate
 - ReportResponse
 - ReportApprovalRequest
 
 Fields:
+
 - id (UUID)
 - study_id
 - patient_id
@@ -651,6 +755,7 @@ Fields:
 - signed_at (timestamp)
 
 Status Workflow:
+
 1. Radiologist creates report in 'draft' status
 2. Radiologist updates findings/impression (draft)
 3. Radiologist marks 'completed' (final draft)
@@ -658,12 +763,14 @@ Status Workflow:
 5. Radiologist 'signs' it (final status)
 
 Features:
+
 - Only creator can edit draft reports
 - Only radiologists can create reports
 - Only senior radiologists can approve
 - Cannot delete signed reports
 - Audit logging all changes
 - Track who signed and when
+
 ```
 
 ---
@@ -673,6 +780,7 @@ Features:
 ### Prompt 17: Audit Logging Endpoints
 
 ```
+
 Create comprehensive audit logging for compliance.
 
 Endpoints:
@@ -683,12 +791,14 @@ GET /api/v1/audit-logs/export?format=csv&start_date=...&end_date=... - Export lo
 GET /api/v1/audit-logs/dashboard - Audit summary statistics
 
 Create Pydantic schemas:
+
 - AuditLogCreate
 - AuditLogResponse
 - AuditLogFilterRequest
 - AuditLogExport
 
 Fields:
+
 - id (BIGINT auto-increment)
 - user_id
 - user_role
@@ -713,6 +823,7 @@ PERMISSION_DENIED (severity: warning)
 DATA_EXPORT
 
 Features:
+
 - Automatically log all CRUD operations
 - Track IP address and user agent
 - Filter by date range, user, action, severity
@@ -721,11 +832,13 @@ Features:
 - Retention: keep for 7 years (HIPAA compliance)
 
 Middleware: Automatically capture logs from API endpoints.
+
 ```
 
 ### Prompt 18: Audit Service Implementation
 
 ```
+
 Create audit logging service.
 
 Create file: app/services/audit_service.py
@@ -733,6 +846,7 @@ Create file: app/services/audit_service.py
 Class: AuditLogger
 
 Methods:
+
 1. log_action(user_id, user_role, action, resource_type, resource_id, details, severity, request)
    - Log an audit event
    - Extract IP from request
@@ -758,11 +872,12 @@ Methods:
    - Export filtered logs to CSV file
    - Return file path
 
-8. cleanup_old_logs(days_to_keep=2555)  # 7 years
+8. cleanup_old_logs(days_to_keep=2555) # 7 years
    - Delete logs older than 7 years
    - Run weekly as scheduled task
 
 Features:
+
 - Automatic logging via middleware
 - Cannot modify or delete logs (append-only)
 - Indexes for fast queries
@@ -770,6 +885,7 @@ Features:
 - Context preservation (details JSON)
 
 Use this for all audit logging operations.
+
 ```
 
 ---
@@ -779,6 +895,7 @@ Use this for all audit logging operations.
 ### Prompt 19: Worklist Endpoints
 
 ```
+
 Create worklist endpoints for study assignment and tracking.
 
 Worklist: List of studies assigned to users for review.
@@ -792,12 +909,14 @@ GET /api/v1/worklist/study/{study_id} - Get worklist for study
 POST /api/v1/worklist/assign - Assign study to radiologist (admin)
 
 Create Pydantic schemas:
+
 - WorklistItemResponse
 - WorklistItemUpdate
 - WorklistFilterOptions
 - WorklistAssignmentRequest
 
 Fields:
+
 - id (UUID or use study_id)
 - study_id
 - patient_id
@@ -809,11 +928,13 @@ Fields:
 - created_at
 
 Status Workflow:
+
 1. New - Just added to worklist
 2. Ongoing - Currently being reviewed
 3. Completed - Review done, report created
 
 Features:
+
 - Return only worklist items for current user (radiologist)
 - Admin can assign studies to users
 - Priority ordering (urgent > high > normal > low)
@@ -823,16 +944,17 @@ Features:
 
 Response format:
 {
-  "id": "w_123",
-  "study_id": "study_456",
-  "patient": {"id": "P001", "name": "John Doe", "age": 45},
-  "status": "new",
-  "priority": "high",
-  "modality": "MRI",
-  "study_date": "2026-03-21",
-  "series_count": 3,
-  "image_count": 45
+"id": "w_123",
+"study_id": "study_456",
+"patient": {"id": "P001", "name": "John Doe", "age": 45},
+"status": "new",
+"priority": "high",
+"modality": "MRI",
+"study_date": "2026-03-21",
+"series_count": 3,
+"image_count": 45
 }
+
 ```
 
 ---
@@ -842,20 +964,24 @@ Response format:
 ### Prompt 20: Celery Async Task Configuration
 
 ```
+
 Create Celery configuration for async DICOM processing.
 
 Create files:
+
 1. app/tasks/celery_app.py - Celery app configuration
 2. app/tasks/dicom_processing_tasks.py - DICOM processing tasks
 3. app/tasks/notification_tasks.py - Email notifications
 
 Requirements:
+
 - Message broker: RabbitMQ or Redis
 - Result backend: Redis
 - Task routing and priority queues
 - Task monitoring with Flower
 
 Configuration:
+
 - Broker URL: from environment
 - Result backend: Redis
 - Task serializer: JSON
@@ -864,6 +990,7 @@ Configuration:
 - Task soft time limit: 50 minutes
 
 Celery Tasks:
+
 1. process_dicom_upload.delay(upload_id, file_paths, patient_id)
    - Process uploaded DICOM files
    - Extract metadata
@@ -890,19 +1017,23 @@ Celery Tasks:
    - Upload completion, report ready, etc
 
 Include error handling, retries, and logging.
+
 ```
 
 ### Prompt 21: Docker Deployment Configuration
 
 ```
+
 Create Docker setup for multi-container deployment.
 
 Create:
+
 1. Dockerfile - FastAPI application container
 2. docker-compose.yml - Multi-container orchestration
 3. nginx.conf - Reverse proxy configuration
 
 Dockerfile features:
+
 - Multi-stage build
 - Python 3.11 base image
 - Install system dependencies
@@ -912,6 +1043,7 @@ Dockerfile features:
 - Non-root user for security
 
 docker-compose.yml services:
+
 1. backend - FastAPI application (uvicorn)
 2. db - PostgreSQL 14
 3. redis - Redis cache
@@ -921,18 +1053,22 @@ docker-compose.yml services:
 7. flower - Celery monitoring UI
 
 Volumes:
+
 - dicom_files - Store uploaded DICOM files
 - postgres_data - Database persistence
 
 Networks:
+
 - Internal network for service communication
 - Only backend/nginx exposed externally
 
 Environment variables:
+
 - All required .env variables for each service
 
 Health checks for all services.
 Database migrations run on startup.
+
 ```
 
 ---
@@ -942,9 +1078,11 @@ Database migrations run on startup.
 ### Prompt 22: Unit Tests Setup
 
 ```
+
 Create unit tests for critical backend functions.
 
 Create test files:
+
 1. tests/test_auth.py - Authentication tests
 2. tests/test_users.py - User management tests
 3. tests/test_patients.py - Patient management tests
@@ -954,12 +1092,14 @@ Create test files:
 7. tests/conftest.py - Pytest fixtures
 
 Using pytest framework:
+
 - Fixtures for database setup/teardown
 - Mock external dependencies
 - Test both success and error cases
 - Fixtures: app, client, test_user, test_patient, test_study, test_dicom_file
 
 Test Coverage:
+
 - Authentication (login, logout, token refresh)
 - Authorization (role-based access control)
 - CRUD operations (create, read, update, delete)
@@ -970,14 +1110,17 @@ Test Coverage:
 Run tests: pytest -v --cov=app
 
 Include 80%+ code coverage.
+
 ```
 
 ### Prompt 23: API Documentation with Swagger
 
 ```
+
 Create OpenAPI/Swagger documentation for FastAPI API.
 
 Requirements:
+
 - Automatic Swagger UI at /docs
 - ReDoc documentation at /redoc
 - All endpoints documented with:
@@ -988,6 +1131,7 @@ Requirements:
   - Error responses
 
 Features:
+
 - Example request/response bodies
 - Parameter descriptions
 - Authentication scheme (Bearer JWT)
@@ -996,7 +1140,8 @@ Features:
 
 Use Pydantic for automatic schema generation.
 Add custom descriptions to all endpoints via docstrings.
-```
+
+````
 
 ---
 
@@ -1071,7 +1216,7 @@ After implementing backend, update your frontend:
        Authorization: `Bearer ${token}`,
      },
    });
-   ```
+````
 
 4. **Update environment variables**:
    ```env
