@@ -1,4 +1,26 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap');
 @import 'tailwindcss';
+
+/* Gwen Text Light globally applied for medical UI clarity */
+@font-face {
+  font-family: 'Gwen Text Light';
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+  src: local('Gwen Text Light'), local('GwenText-Light'),
+    url('/fonts/GwenText-Light.woff2') format('woff2'),
+    url('/fonts/GwenText-Light.woff') format('woff');
+}
+
+/* Fallback: Inter from Google fonts ensures usable rendering if Gwen is missing */
+:root {
+  --app-font: 'Gwen Text Light', 'Inter', 'Segoe UI', Helvetica, Arial, sans-serif;
+}
+
+html,
+body {
+  font-family: var(--app-font);
+}
 
 :root {
   --background: oklch(0.98 0 0);
