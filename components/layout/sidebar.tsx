@@ -11,7 +11,10 @@ import {
   FileText,
   Settings,
   BarChart3,
+  ChevronLeft,
+  Menu,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface NavItem {
   href: string;
@@ -57,7 +60,7 @@ const navItems: NavItem[] = [
   },
 ];
 
-export function Sidebar() {
+export function Sidebar({ visible, setSidebarVisible }: { visible: boolean; setSidebarVisible: (visible: boolean) => void }) {
   const { user } = useAuth();
   const pathname = usePathname();
 
@@ -67,9 +70,9 @@ export function Sidebar() {
   });
 
   return (
-    <aside className="w-64 border-r border-sidebar-border bg-sidebar flex flex-col h-full">
-      {/* Logo Section */}
-      <div className="p-6 border-b border-sidebar-border">
+    <aside className={`border-r border-sidebar-border bg-sidebar flex flex-col h-full transition-all duration-300 ease-in-out ${visible ? 'w-64' : 'w-0 overflow-hidden'}`}>
+      {/* Logo + toggle */}
+      <div className="p-6 border-b border-sidebar-border flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-sidebar-primary">
             <BarChart3 className="h-5 w-5 text-sidebar-primary-foreground" />
@@ -79,6 +82,18 @@ export function Sidebar() {
             <p className="text-xs text-sidebar-foreground/60">Medical Imaging</p>
           </div>
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setSidebarVisible(!visible)}
+          className="h-8 w-8 rounded-full bg-sidebar-accent hover:bg-sidebar-accent/80"
+        >
+          {visible ? (
+            <ChevronLeft className="h-4 w-4 text-sidebar-accent-foreground" />
+          ) : (
+            <Menu className="h-4 w-4 text-sidebar-accent-foreground" />
+          )}
+        </Button>
       </div>
 
       {/* Navigation */}
@@ -101,7 +116,7 @@ export function Sidebar() {
                   : 'text-sidebar-foreground hover:bg-sidebar-accent'
               )}
             >
-              <Icon className="h-5 w-5 flex-shrink-0" />
+              <Icon className="h-5 w-5 shrink-0" />
               <span className="text-sm font-medium">{item.label}</span>
             </Link>
           );

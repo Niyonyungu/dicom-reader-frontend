@@ -13,7 +13,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Clock, LogOut, Settings, User } from 'lucide-react';
 
-export function TopBar() {
+interface TopBarProps {
+  sidebarVisible: boolean;
+  setSidebarVisible: (visible: boolean) => void;
+}
+
+export function TopBar({ sidebarVisible, setSidebarVisible }: TopBarProps) {
   const { user, logout } = useAuth();
   const { time, date } = useRealTimeClock();
   const router = useRouter();
