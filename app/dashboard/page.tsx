@@ -95,13 +95,13 @@ export default function DashboardPage() {
       </Card>
 
       {/* Quick Info */}
-      <Card className="border-border bg-card/50">
+      {/* <Card className="border-border bg-card/50">
         <CardContent className="pt-6">
           <p className="text-sm text-muted-foreground">
             Role: <span className="font-semibold text-foreground capitalize">{user?.role}</span>
           </p>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
 }
