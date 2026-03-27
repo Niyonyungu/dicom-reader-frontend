@@ -12,8 +12,9 @@ export const metadata: Metadata = {
   description: 'Professional Medical DICOM Viewer',
   generator: 'v0.app',
   icons: {
-    icon: '/favicon.ico',
-    apple: '/apple-icon.png',
+    icon: '/favicon.png',
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
   },
 }
 
