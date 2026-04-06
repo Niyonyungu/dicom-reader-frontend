@@ -14,7 +14,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { DicomViewer } from '@/components/viewer/dicom-viewer';
+import { MultiViewportDicomViewer } from './multi-viewport-dicom-viewer';
 import { MeasurementTools, HUDisplay } from '@/components/viewer/measurement-tools';
 import { MobileViewerWrapper, MobileControlsPanel, ResponsiveStatsGrid, StatCard } from '@/components/viewer/mobile-viewer-wrapper';
 import { MultiPlanarReconstruction, MaximumIntensityProjection, ImageFusion, VolumeRenderer } from '@/components/viewer/advanced-visualization';
@@ -156,10 +156,12 @@ export function IntegratedDicomViewer({
                 {/* Viewer Tab */}
                 <TabsContent value="viewer" className="space-y-3">
                     <Card className="border-border overflow-hidden">
-                        <DicomViewer
-                            images={images}
+                        <MultiViewportDicomViewer
+                            initialImages={images}
                             modality={modality}
                             description={description}
+                            worklistItem={{ id: studyId }}
+                            patientId={patientId}
                             onImageViewed={(id) => {
                                 auditLogger.log(
                                     AuditEventType.IMAGE_VIEWED,

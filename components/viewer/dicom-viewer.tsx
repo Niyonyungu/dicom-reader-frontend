@@ -36,6 +36,7 @@ interface DicomViewerProps {
   onIndexChange?: (index: number) => void;
   onImageViewed?: (imageId: string) => void;
   worklistItem?: any; // For metadata access
+  showControls?: boolean; // New prop to control whether to show controls
 }
 
 export function DicomViewer({
@@ -46,6 +47,7 @@ export function DicomViewer({
   onIndexChange,
   onImageViewed,
   worklistItem,
+  showControls = true,
 }: DicomViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [viewerState, setViewerState] = useState<ViewerState>(
@@ -73,6 +75,7 @@ export function DicomViewer({
   }>>([]);
   const [measurementPoints, setMeasurementPoints] = useState<Array<{ x: number; y: number }>>([]);
   const [measurementDistance, setMeasurementDistance] = useState<number | null>(null);
+  const lastViewedImageIdRef = useRef<string | null>(null);
 
   const currentImage = images[viewerState.currentImage];
   const volumeImageStack = images
@@ -128,9 +131,15 @@ export function DicomViewer({
     onIndexChange?.(bounded);
   };
 
-  // Mark current image as viewed
+  // Mark current image as viewed once per image
   useEffect(() => {
-    if (currentImage && !currentImage.viewed && onImageViewed) {
+    if (
+      currentImage &&
+      !currentImage.viewed &&
+      onImageViewed &&
+      lastViewedImageIdRef.current !== currentImage.id
+    ) {
+      lastViewedImageIdRef.current = currentImage.id;
       onImageViewed(currentImage.id);
     }
   }, [currentImage, onImageViewed]);
@@ -499,6 +508,21 @@ export function DicomViewer({
 
   return (
     <div className="space-y-4">
+      <div className="rounded-2xl border border-primary/40 bg-primary/10 p-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-primary font-semibold">
+              Study & Image Controls
+            </p>
+            <p className="mt-2 text-sm font-medium text-foreground">
+              Navigate slices, adjust window settings, and inspect the current image with clearly labeled actions.
+            </p>
+          </div>
+          <div className="text-sm text-foreground">
+            Current image: {viewerState.currentImage + 1} / {images.length}
+          </div>
+        </div>
+      </div>
       {/* Canvas */}
       <Card className="border-border overflow-hidden">
         <div className="bg-black flex items-center justify-center" style={{ height: '600px' }}>
@@ -521,426 +545,433 @@ export function DicomViewer({
       </Card>
 
       {/* Controls */}
-      <Card className="border-border p-4">
-        <div className="space-y-4">
-          {/* Toolbar */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleZoom('in')}
-              title="Zoom In"
-              className="border-border"
-            >
-              <ZoomIn className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleZoom('out')}
-              title="Zoom Out"
-              className="border-border"
-            >
-              <ZoomOut className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRotate}
-              title="Rotate"
-              className="border-border"
-            >
-              <RotateCw className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleFlip}
-              title="Flip"
-              className="border-border"
-            >
-              <Maximize2 className="h-4 w-4" />
-            </Button>
-            <select
-              value={windowPresetName}
-              onChange={(e) => applyWindowPreset(e.target.value)}
-              className="rounded border border-border bg-surface text-xs py-1 px-2"
-              title="Window/Level Preset"
-            >
-              {Object.keys(windowPresets[modality.toLowerCase() as keyof typeof windowPresets] || windowPresets.xray).map((preset) => (
-                <option key={preset} value={preset}>
-                  {preset}
-                </option>
-              ))}
-            </select>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowWindowControls(!showWindowControls)}
-              title="Window/Level"
-              className="border-border"
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={advancedMode === 'mpr' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setAdvancedMode((prev) => (prev === 'mpr' ? 'none' : 'mpr'))}
-              className="border-border"
-            >
-              MPR
-            </Button>
-            <Button
-              variant={advancedMode === '3d' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setAdvancedMode((prev) => (prev === '3d' ? 'none' : '3d'))}
-              className="border-border"
-            >
-              3D
-            </Button>
-            <Button
-              variant={advancedMode === 'hu' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setAdvancedMode((prev) => (prev === 'hu' ? 'none' : 'hu'))}
-              className="border-border"
-            >
-              HU
-            </Button>
-            <Button
-              variant={isPlaying ? 'destructive' : 'outline'}
-              size="sm"
-              onClick={() => setIsPlaying((prev) => !prev)}
-              className="border-border"
-            >
-              {isPlaying ? 'Pause Cine' : 'Play Cine'}
-            </Button>
-            <Button
-              variant={annotationMode ? 'destructive' : 'outline'}
-              size="sm"
-              onClick={() => {
-                setAnnotationMode((prev) => !prev);
-                if (measurementMode) setMeasurementMode(false);
-              }}
-              className="border-border"
-            >
-              {annotationMode ? 'Exit Annotate' : 'Annotate'}
-            </Button>
-            <Button
-              variant={measurementMode ? 'destructive' : 'outline'}
-              size="sm"
-              onClick={() => {
-                setMeasurementMode((prev) => !prev);
-                if (annotationMode) setAnnotationMode(false);
-                setMeasurementPoints([]);
-                setMeasurementDistance(null);
-              }}
-              className="border-border"
-            >
-              {measurementMode ? 'Exit Measure' : 'Measure'}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setMeasurementPoints([]);
-                setMeasurementDistance(null);
-              }}
-              className="border-border"
-            >
-              Clear Measures
-            </Button>
-            <Button
-              variant={keyImages.has(currentImage?.id || '') ? 'default' : 'outline'}
-              size="sm"
-              onClick={toggleKeyImage}
-              title="Mark as Key Image"
-              className="border-border"
-            >
-              <Star className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={captureScreen}
-              title="Capture Screen"
-              className="border-border"
-            >
-              <Camera className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowMetadata(!showMetadata)}
-              title="DICOM Metadata"
-              className="border-border"
-            >
-              <FileText className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={calculateQualityMetrics}
-              title="Quality Metrics"
-              className="border-border"
-            >
-              <BarChart3 className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleReset}
-              className="border-border ml-auto"
-            >
-              Reset
-            </Button>
-          </div>
+      {showControls && (
+        <Card className="border-border p-4">
+          <div className="space-y-4">
+            {/* Toolbar */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleZoom('in')}
+                title="Zoom In"
+                className="border-border"
+              >
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleZoom('out')}
+                title="Zoom Out"
+                className="border-border"
+              >
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRotate}
+                title="Rotate"
+                className="border-border"
+              >
+                <RotateCw className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleFlip}
+                title="Flip"
+                className="border-border"
+              >
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+              <select
+                value={windowPresetName}
+                onChange={(e) => applyWindowPreset(e.target.value)}
+                className="rounded border border-border bg-surface text-xs py-1 px-2"
+                title="Window/Level Preset"
+              >
+                {Object.keys(windowPresets[modality.toLowerCase() as keyof typeof windowPresets] || windowPresets.xray).map((preset) => (
+                  <option key={preset} value={preset}>
+                    {preset}
+                  </option>
+                ))}
+              </select>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowWindowControls(!showWindowControls)}
+                title="Window/Level"
+                className="border-border"
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={advancedMode === 'mpr' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setAdvancedMode((prev) => (prev === 'mpr' ? 'none' : 'mpr'))}
+                className="border-border"
+              >
+                MPR
+              </Button>
+              <Button
+                variant={advancedMode === '3d' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setAdvancedMode((prev) => (prev === '3d' ? 'none' : '3d'))}
+                className="border-border"
+              >
+                3D
+              </Button>
+              <Button
+                variant={advancedMode === 'hu' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setAdvancedMode((prev) => (prev === 'hu' ? 'none' : 'hu'))}
+                className="border-border"
+              >
+                HU
+              </Button>
+              <Button
+                variant={isPlaying ? 'destructive' : 'outline'}
+                size="sm"
+                onClick={() => setIsPlaying((prev) => !prev)}
+                className="border-border"
+              >
+                {isPlaying ? 'Pause Cine' : 'Play Cine'}
+              </Button>
+              <Button
+                variant={annotationMode ? 'destructive' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setAnnotationMode((prev) => !prev);
+                  if (measurementMode) setMeasurementMode(false);
+                }}
+                className="border-border"
+              >
+                {annotationMode ? 'Exit Annotate' : 'Annotate'}
+              </Button>
+              <Button
+                variant={measurementMode ? 'destructive' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setMeasurementMode((prev) => !prev);
+                  if (annotationMode) setAnnotationMode(false);
+                  setMeasurementPoints([]);
+                  setMeasurementDistance(null);
+                }}
+                className="border-border"
+              >
+                {measurementMode ? 'Exit Measure' : 'Measure'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setMeasurementPoints([]);
+                  setMeasurementDistance(null);
+                }}
+                className="border-border"
+              >
+                Clear Measures
+              </Button>
+              <Button
+                variant={keyImages.has(currentImage?.id || '') ? 'default' : 'outline'}
+                size="sm"
+                onClick={toggleKeyImage}
+                title="Mark as Key Image"
+                className="border-border"
+              >
+                <Star className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={captureScreen}
+                title="Capture Screen"
+                className="border-border"
+              >
+                <Camera className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowMetadata(!showMetadata)}
+                title="DICOM Metadata"
+                className="border-border"
+              >
+                <FileText className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={calculateQualityMetrics}
+                title="Quality Metrics"
+                className="border-border"
+              >
+                <BarChart3 className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReset}
+                className="border-border ml-auto"
+              >
+                Reset
+              </Button>
+            </div>
 
-          {/* Window/Level Controls */}
-          {showWindowControls && (
-            <div className="space-y-3 p-3 rounded-lg bg-muted/50 border border-border">
+            {/* Window/Level Controls */}
+            {showWindowControls && (
+              <div className="space-y-3 p-3 rounded-lg bg-muted/50 border border-border">
+                <div>
+                  <label className="text-sm font-medium text-foreground block mb-2">
+                    Window Center: {viewerState.windowCenter}
+                  </label>
+                  <input
+                    type="range"
+                    min={0}
+                    max={255}
+                    step={1}
+                    value={viewerState.windowCenter}
+                    onChange={(event) => handleWindowChange([Number(event.target.value)])}
+                    className="w-full mt-2"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Image Navigation */}
+            <div className="rounded-lg border border-border bg-muted/10 p-4">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Image Navigation</p>
+                  <p className="text-xs text-muted-foreground">
+                    Use the slice controls and navigation buttons to step through the image stack.
+                  </p>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Viewing image {viewerState.currentImage + 1} of {images.length}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleImageChange(viewerState.currentImage - 1)}
+                  disabled={viewerState.currentImage === 0}
+                  className="border-border"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="ml-2">Previous Image</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleImageChange(viewerState.currentImage + 1)}
+                  disabled={viewerState.currentImage === images.length - 1}
+                  className="border-border"
+                >
+                  <span className="mr-2">Next Image</span>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <div className="ml-auto text-xs text-muted-foreground">
+                  {currentImage?.seriesDescription || 'No current image selected'}
+                </div>
+              </div>
+            </div>
+
+            {/* Status Bar */}
+            <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border">
               <div>
-                <label className="text-sm font-medium text-foreground">
-                  Window Center: {viewerState.windowCenter}
-                </label>
-                <Slider
-                  value={[viewerState.windowCenter]}
-                  onValueChange={handleWindowChange}
-                  min={0}
-                  max={255}
-                  step={1}
-                  className="mt-2"
-                />
+                Zoom: {(viewerState.zoom * 100).toFixed(0)}% | Rotation:{' '}
+                {viewerState.rotation}°
+              </div>
+              <div>
+                W:{viewerState.windowWidth} L:{viewerState.windowCenter}
               </div>
             </div>
-          )}
 
-          {/* Image Navigation */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleImageChange(viewerState.currentImage - 1)}
-                disabled={viewerState.currentImage === 0}
-                className="border-border"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm text-foreground font-medium px-3 py-1 rounded bg-muted">
-                {viewerState.currentImage + 1} / {images.length}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleImageChange(viewerState.currentImage + 1)}
-                disabled={viewerState.currentImage === images.length - 1}
-                className="border-border"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {/* Image Info */}
-            <div className="text-right text-xs text-muted-foreground">
-              {currentImage && (
-                <>
-                  <div>{currentImage.seriesDescription}</div>
-                  <div>{currentImage.filename}</div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Status Bar */}
-          <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border">
-            <div>
-              Zoom: {(viewerState.zoom * 100).toFixed(0)}% | Rotation:{' '}
-              {viewerState.rotation}°
-            </div>
-            <div>
-              W:{viewerState.windowWidth} L:{viewerState.windowCenter}
-            </div>
-          </div>
-
-          {/* Slice Slider */}
-          <div className="mt-4">
-            <label className="text-xs font-medium text-foreground">
-              Slice {viewerState.currentImage + 1} / {images.length}
-            </label>
-            <Slider
-              value={[viewerState.currentImage]}
-              onValueChange={([value]) => handleImageChange(value)}
-              min={0}
-              max={Math.max(0, images.length - 1)}
-              step={1}
-              className="mt-2"
-            />
-          </div>
-
-          {/* Metadata / AI Insight */}
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="p-3 rounded-lg bg-muted/25 border border-border">
-              <h3 className="text-sm font-semibold mb-2">DICOM Metadata</h3>
-              <p className="text-xs text-muted-foreground">Modality: {modality}</p>
-              <p className="text-xs text-muted-foreground">Description: {description}</p>
-              {currentImage && (
-                <>
-                  <p className="text-xs text-muted-foreground">Series: {currentImage.seriesDescription}</p>
-                  <p className="text-xs text-muted-foreground">Instance: {currentImage.instanceNumber}</p>
-                  <p className="text-xs text-muted-foreground">File: {currentImage.filename}</p>
-                  <p className="text-xs text-muted-foreground">Viewed: {currentImage.viewed ? 'Yes' : 'No'}</p>
-                </>
-              )}
-            </div>
-            <div className="p-3 rounded-lg bg-muted/25 border border-border">
-              <h3 className="text-sm font-semibold mb-2">AI Pre-read (Demo)</h3>
-              <p className="text-xs text-muted-foreground">
-                The DICOM viewer is prepared for AI integration: lesion flags, required follow-up, and request prioritization.
-              </p>
-              <p className="mt-2 text-xs font-semibold">
-                {currentImage ? (currentImage.instanceNumber % 3 === 0 ? 'Finding: Potential nodule' : 'Finding: No critical finding') : 'No image selected'}
-              </p>
-            </div>
-          </div>
-
-          {/* DICOM Metadata Viewer */}
-          {showMetadata && currentImage && (
-            <div className="mt-4 p-4 rounded-lg bg-muted/25 border border-border">
-              <h3 className="text-sm font-semibold mb-3">DICOM Header Information</h3>
-              <div className="grid grid-cols-2 gap-4 text-xs">
-                <div>
-                  <p className="font-medium text-muted-foreground">Study Information</p>
-                  <p>Study ID: {worklistItem?.id || 'N/A'}</p>
-                  <p>Study Date: {worklistItem?.studyDate || 'N/A'}</p>
-                  <p>Study Time: {worklistItem?.studyTime || 'N/A'}</p>
-                  <p>Modality: {modality}</p>
-                  <p>Description: {description}</p>
-                </div>
-                <div>
-                  <p className="font-medium text-muted-foreground">Image Information</p>
-                  <p>Series: {currentImage.seriesDescription}</p>
-                  <p>Instance: {currentImage.instanceNumber}</p>
-                  <p>Filename: {currentImage.filename}</p>
-                  <p>Window Center: {currentImage.windowCenter || 'N/A'}</p>
-                  <p>Window Width: {currentImage.windowWidth || 'N/A'}</p>
-                  <p>Slice Thickness: {currentImage.sliceThickness || 'N/A'}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Quality Metrics */}
-          {qualityMetrics && (
-            <div className="mt-4 p-4 rounded-lg bg-muted/25 border border-border">
-              <h3 className="text-sm font-semibold mb-3">Image Quality Metrics</h3>
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <p className="text-xs text-muted-foreground">Brightness</p>
-                  <p className="text-lg font-semibold">{qualityMetrics.brightness}</p>
-                  <div className="w-full bg-muted rounded-full h-2 mt-1">
-                    <div
-                      className="bg-primary h-2 rounded-full"
-                      style={{ width: `${(qualityMetrics.brightness / 255) * 100}%` }}
-                    ></div>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Contrast</p>
-                  <p className="text-lg font-semibold">{qualityMetrics.contrast}</p>
-                  <div className="w-full bg-muted rounded-full h-2 mt-1">
-                    <div
-                      className="bg-primary h-2 rounded-full"
-                      style={{ width: `${(qualityMetrics.contrast / 255) * 100}%` }}
-                    ></div>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Noise</p>
-                  <p className="text-lg font-semibold">{qualityMetrics.noise}</p>
-                  <div className="w-full bg-muted rounded-full h-2 mt-1">
-                    <div
-                      className="bg-red-500 h-2 rounded-full"
-                      style={{ width: `${Math.min((qualityMetrics.noise / 50) * 100, 100)}%` }}
-                    ></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Image Filters */}
-          <div className="mt-4 p-4 rounded-lg bg-muted/25 border border-border">
-            <h3 className="text-sm font-semibold mb-3">Image Processing</h3>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant={imageFilter === 'none' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setImageFilter('none')}
-                className="text-xs"
-              >
-                <Filter className="h-3 w-3 mr-1" />
-                Original
-              </Button>
-              <Button
-                variant={imageFilter === 'sharpen' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setImageFilter('sharpen')}
-                className="text-xs"
-              >
-                <Filter className="h-3 w-3 mr-1" />
-                Sharpen
-              </Button>
-              <Button
-                variant={imageFilter === 'smooth' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setImageFilter('smooth')}
-                className="text-xs"
-              >
-                <Filter className="h-3 w-3 mr-1" />
-                Smooth
-              </Button>
-              <Button
-                variant={imageFilter === 'edge' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setImageFilter('edge')}
-                className="text-xs"
-              >
-                <Filter className="h-3 w-3 mr-1" />
-                Edge Detect
-              </Button>
-            </div>
-          </div>
-
-          {/* Advanced Visualization Modes */}
-          {advancedMode !== 'none' && (
+            {/* Slice Slider */}
             <div className="mt-4">
-              {advancedMode === 'mpr' && volumeImageStack.length > 0 && (
-                <MultiPlanarReconstruction imageStack={volumeImageStack} sliceIndex={viewerState.currentImage} />
-              )}
-              {advancedMode === '3d' && volumeImageStack.length > 0 && (
-                <VolumeRenderer imageStack={volumeImageStack} />
-              )}
-              {advancedMode === 'hu' && currentImage?.pixelData && (
-                <HounsfieldUnitInspector
-                  pixelData={currentImage.pixelData}
-                  rescaleIntercept={currentImage.rescaleIntercept ?? -1024}
-                  rescaleSlope={currentImage.rescaleSlope ?? 1}
-                />
-              )}
-              {advancedMode === 'mpr' && !currentImage?.pixelData && (
-                <p className="text-sm text-muted-foreground">MPR requires loaded pixel data in current slice.</p>
-              )}
-              {advancedMode === 'hu' && !currentImage?.pixelData && (
-                <p className="text-sm text-muted-foreground">HU inspection requires loaded pixel data.</p>
-              )}
-              {advancedMode === '3d' && volumeImageStack.length === 0 && (
-                <p className="text-sm text-muted-foreground">3D rendering requires a stack of image data across slices.</p>
-              )}
+              <label className="text-xs font-medium text-foreground block mb-2">
+                Slice / Image Stack ({viewerState.currentImage + 1} of {images.length})
+              </label>
+              <input
+                type="range"
+                min={0}
+                max={Math.max(0, images.length - 1)}
+                step={1}
+                value={viewerState.currentImage}
+                onChange={(event) => handleImageChange(Number(event.target.value))}
+                className="w-full mt-2"
+              />
             </div>
-          )}
 
-        </div>
-      </Card>
+            {/* Metadata / AI Insight */}
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="p-3 rounded-lg bg-muted/25 border border-border">
+                <h3 className="text-sm font-semibold mb-2">DICOM Metadata</h3>
+                <p className="text-xs text-muted-foreground">Modality: {modality}</p>
+                <p className="text-xs text-muted-foreground">Description: {description}</p>
+                {currentImage && (
+                  <>
+                    <p className="text-xs text-muted-foreground">Series: {currentImage.seriesDescription}</p>
+                    <p className="text-xs text-muted-foreground">Instance: {currentImage.instanceNumber}</p>
+                    <p className="text-xs text-muted-foreground">File: {currentImage.filename}</p>
+                    <p className="text-xs text-muted-foreground">Viewed: {currentImage.viewed ? 'Yes' : 'No'}</p>
+                  </>
+                )}
+              </div>
+              <div className="p-3 rounded-lg bg-muted/25 border border-border">
+                <h3 className="text-sm font-semibold mb-2">AI Pre-read (Demo)</h3>
+                <p className="text-xs text-muted-foreground">
+                  The DICOM viewer is prepared for AI integration: lesion flags, required follow-up, and request prioritization.
+                </p>
+                <p className="mt-2 text-xs font-semibold">
+                  {currentImage ? (currentImage.instanceNumber % 3 === 0 ? 'Finding: Potential nodule' : 'Finding: No critical finding') : 'No image selected'}
+                </p>
+              </div>
+            </div>
+
+            {/* DICOM Metadata Viewer */}
+            {showMetadata && currentImage && (
+              <div className="mt-4 p-4 rounded-lg bg-muted/25 border border-border">
+                <h3 className="text-sm font-semibold mb-3">DICOM Header Information</h3>
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <p className="font-medium text-muted-foreground">Study Information</p>
+                    <p>Study ID: {worklistItem?.id || 'N/A'}</p>
+                    <p>Study Date: {worklistItem?.studyDate || 'N/A'}</p>
+                    <p>Study Time: {worklistItem?.studyTime || 'N/A'}</p>
+                    <p>Modality: {modality}</p>
+                    <p>Description: {description}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-muted-foreground">Image Information</p>
+                    <p>Series: {currentImage.seriesDescription}</p>
+                    <p>Instance: {currentImage.instanceNumber}</p>
+                    <p>Filename: {currentImage.filename}</p>
+                    <p>Window Center: {currentImage.windowCenter || 'N/A'}</p>
+                    <p>Window Width: {currentImage.windowWidth || 'N/A'}</p>
+                    <p>Slice Thickness: {currentImage.sliceThickness || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Quality Metrics */}
+            {qualityMetrics && (
+              <div className="mt-4 p-4 rounded-lg bg-muted/25 border border-border">
+                <h3 className="text-sm font-semibold mb-3">Image Quality Metrics</h3>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Brightness</p>
+                    <p className="text-lg font-semibold">{qualityMetrics.brightness}</p>
+                    <div className="w-full bg-muted rounded-full h-2 mt-1">
+                      <div
+                        className="bg-primary h-2 rounded-full"
+                        style={{ width: `${(qualityMetrics.brightness / 255) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Contrast</p>
+                    <p className="text-lg font-semibold">{qualityMetrics.contrast}</p>
+                    <div className="w-full bg-muted rounded-full h-2 mt-1">
+                      <div
+                        className="bg-primary h-2 rounded-full"
+                        style={{ width: `${(qualityMetrics.contrast / 255) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Noise</p>
+                    <p className="text-lg font-semibold">{qualityMetrics.noise}</p>
+                    <div className="w-full bg-muted rounded-full h-2 mt-1">
+                      <div
+                        className="bg-red-500 h-2 rounded-full"
+                        style={{ width: `${Math.min((qualityMetrics.noise / 50) * 100, 100)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Image Filters */}
+            <div className="mt-4 p-4 rounded-lg bg-muted/25 border border-border">
+              <h3 className="text-sm font-semibold mb-3">Image Processing</h3>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={imageFilter === 'none' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setImageFilter('none')}
+                  className="text-xs"
+                >
+                  <Filter className="h-3 w-3 mr-1" />
+                  Original
+                </Button>
+                <Button
+                  variant={imageFilter === 'sharpen' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setImageFilter('sharpen')}
+                  className="text-xs"
+                >
+                  <Filter className="h-3 w-3 mr-1" />
+                  Sharpen
+                </Button>
+                <Button
+                  variant={imageFilter === 'smooth' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setImageFilter('smooth')}
+                  className="text-xs"
+                >
+                  <Filter className="h-3 w-3 mr-1" />
+                  Smooth
+                </Button>
+                <Button
+                  variant={imageFilter === 'edge' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setImageFilter('edge')}
+                  className="text-xs"
+                >
+                  <Filter className="h-3 w-3 mr-1" />
+                  Edge Detect
+                </Button>
+              </div>
+            </div>
+
+            {/* Advanced Visualization Modes */}
+            {advancedMode !== 'none' && (
+              <div className="mt-4">
+                {advancedMode === 'mpr' && volumeImageStack.length > 0 && (
+                  <MultiPlanarReconstruction imageStack={volumeImageStack} sliceIndex={viewerState.currentImage} />
+                )}
+                {advancedMode === '3d' && volumeImageStack.length > 0 && (
+                  <VolumeRenderer imageStack={volumeImageStack} />
+                )}
+                {advancedMode === 'hu' && currentImage?.pixelData && (
+                  <HounsfieldUnitInspector
+                    pixelData={currentImage.pixelData}
+                    rescaleIntercept={currentImage.rescaleIntercept ?? -1024}
+                    rescaleSlope={currentImage.rescaleSlope ?? 1}
+                  />
+                )}
+                {advancedMode === 'mpr' && !currentImage?.pixelData && (
+                  <p className="text-sm text-muted-foreground">MPR requires loaded pixel data in current slice.</p>
+                )}
+                {advancedMode === 'hu' && !currentImage?.pixelData && (
+                  <p className="text-sm text-muted-foreground">HU inspection requires loaded pixel data.</p>
+                )}
+                {advancedMode === '3d' && volumeImageStack.length === 0 && (
+                  <p className="text-sm text-muted-foreground">3D rendering requires a stack of image data across slices.</p>
+                )}
+              </div>
+            )}
+
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useWorklist } from '@/context/worklist-context';
 import { usePatients } from '@/context/patients-context';
-import { DicomViewer } from '@/components/viewer/dicom-viewer';
+import { MultiViewportDicomViewer } from '@/components/viewer/multi-viewport-dicom-viewer';
 import { loadDicomFiles } from '@/lib/cornerstone-setup';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,20 +23,18 @@ export default function ViewerPage() {
   const worklistItem = getWorklistItem(worklistId);
   const patient = worklistItem ? getPatient(worklistItem.patientId) : null;
   const [loadedImages, setLoadedImages] = useState<import('@/lib/mock-data').DicomImage[]>([]);
-  const [syncIndex, setSyncIndex] = useState(0);
   const [shareNote, setShareNote] = useState('');
   const [message, setMessage] = useState('');
 
-  const handleImageViewed = (imageId: string) => {
-    if (worklistItem) {
-      const updatedImages = worklistItem.images.map(img =>
-        img.id === imageId
-          ? { ...img, viewed: true, viewedAt: new Date().toISOString() }
-          : img
-      );
-      updateWorklistItem(worklistId, { images: updatedImages });
-    }
-  };
+  const handleImageViewed = useCallback((imageId: string) => {
+    if (!worklistItem) return;
+    const updatedImages = worklistItem.images.map((img) =>
+      img.id === imageId
+        ? { ...img, viewed: true, viewedAt: new Date().toISOString() }
+        : img
+    );
+    updateWorklistItem(worklistId, { images: updatedImages });
+  }, [worklistId, worklistItem, updateWorklistItem]);
 
 
   const seriesList = worklistItem
@@ -44,33 +42,10 @@ export default function ViewerPage() {
     : [];
 
   const [sidebarVisible, setSidebarVisible] = useState(true);
-  const [compareMode, setCompareMode] = useState<'none' | 'sideBySide' | 'grid'>('none');
-  const [selectedCompareSeries, setSelectedCompareSeries] = useState<string | null>(null);
 
   const activeImages = loadedImages.length > 0 ? loadedImages : worklistItem?.images ?? [];
-  const seriesGroups = activeImages.reduce<Record<string, typeof activeImages>>(
-    (acc, img) => {
-      const key = img.seriesDescription || 'Series 1';
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(img);
-      return acc;
-    },
-    {}
-  );
-  const seriesKeys = Object.keys(seriesGroups);
 
-  const primarySeriesKey = seriesKeys[0] || 'Series 1';
-  const compareSeriesKey =
-    selectedCompareSeries && seriesGroups[selectedCompareSeries]
-      ? selectedCompareSeries
-      : seriesKeys.length > 1
-      ? seriesKeys[1]
-      : primarySeriesKey;
-
-  const primarySeries = seriesGroups[primarySeriesKey] || activeImages;
-  const compareSeries = seriesGroups[compareSeriesKey] || [];
-
-  const imageInstances = (compareMode === 'sideBySide' ? primarySeries : activeImages).map((i) => i.instanceNumber).join(', ');
+  const imageInstances = activeImages.map((i) => i.instanceNumber).join(', ');
 
   if (!worklistItem || !patient) {
     return (
@@ -155,7 +130,6 @@ export default function ViewerPage() {
               if (!event.target.files) return;
               const loaded = await loadDicomFiles(event.target.files);
               setLoadedImages(loaded);
-              setSyncIndex(0);
               setMessage(`Loaded ${loaded.length} file(s).`);
             }}
             className="text-sm"
@@ -202,121 +176,11 @@ export default function ViewerPage() {
       <div className={`grid grid-cols-1 ${sidebarVisible ? 'lg:grid-cols-4' : 'lg:grid-cols-1'} gap-6`}>
         {/* Main Viewer */}
         <div className={sidebarVisible ? 'lg:col-span-3' : 'lg:col-span-1'}>
-          <div className="space-y-3">
-            <Card className="border-border p-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold">Compare mode:</span>
-                <Button
-                  size="sm"
-                  variant={compareMode === 'none' ? 'secondary' : 'outline'}
-                  onClick={() => setCompareMode('none')}
-                  className="border-border"
-                >
-                  None
-                </Button>
-                <Button
-                  size="sm"
-                  variant={compareMode === 'sideBySide' ? 'secondary' : 'outline'}
-                  onClick={() => setCompareMode('sideBySide')}
-                  className="border-border"
-                >
-                  Side-by-side
-                </Button>
-                <Button
-                  size="sm"
-                  variant={compareMode === 'grid' ? 'secondary' : 'outline'}
-                  onClick={() => setCompareMode('grid')}
-                  className="border-border"
-                >
-                  Grid
-                </Button>
-
-                {seriesKeys.length > 1 && (
-                  <select
-                    className="text-xs border border-border rounded px-2 py-1"
-                    value={compareSeriesKey}
-                    onChange={(e) => setSelectedCompareSeries(e.target.value)}
-                  >
-                    {seriesKeys.map((seriesKey) => (
-                      <option key={seriesKey} value={seriesKey}>
-                        {seriesKey}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-            </Card>
-
-            {compareMode === 'grid' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {seriesKeys.map((key) => (
-                  <div key={key} className="border border-border rounded">
-                    <h3 className="p-2 text-sm font-semibold">{key}</h3>
-                    <DicomViewer
-                      images={seriesGroups[key]}
-                      modality={worklistItem.modality}
-                      description={worklistItem.description}
-                      syncIndex={syncIndex}
-                      onIndexChange={setSyncIndex}
-                      onImageViewed={handleImageViewed}
-                      worklistItem={worklistItem}
-                    />
-                  </div>
-                ))}
-              </div>
-            ) : compareMode === 'sideBySide' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="border border-border rounded">
-                  <h3 className="p-2 text-sm font-semibold">Primary: {primarySeriesKey}</h3>
-                  <DicomViewer
-                    images={primarySeries}
-                    modality={worklistItem.modality}
-                    description={worklistItem.description}
-                    syncIndex={syncIndex}
-                    onIndexChange={setSyncIndex}
-                    onImageViewed={handleImageViewed}
-                    worklistItem={worklistItem}
-                  />
-                </div>
-                <div className="border border-border rounded">
-                  <h3 className="p-2 text-sm font-semibold">Compare: {compareSeriesKey}</h3>
-                  <DicomViewer
-                    images={compareSeries}
-                    modality={worklistItem.modality}
-                    description={worklistItem.description}
-                    syncIndex={syncIndex}
-                    onIndexChange={setSyncIndex}
-                    onImageViewed={handleImageViewed}
-                    worklistItem={worklistItem}
-                  />
-                </div>
-              </div>
-            ) : (
-              <DicomViewer
-                images={primarySeries}
-                modality={worklistItem.modality}
-                description={worklistItem.description}
-                syncIndex={syncIndex}
-                onIndexChange={setSyncIndex}
-                onImageViewed={handleImageViewed}
-              />
-            )}
-
-            <Card className="border-border p-3">
-              <h3 className="text-sm font-semibold mb-2">Image filmstrip</h3>
-              <div className="flex flex-wrap gap-2 overflow-x-auto pb-2">
-                {(compareMode === 'sideBySide' ? primarySeries : primarySeries).map((img, idx) => (
-                  <button
-                    key={img.id}
-                    onClick={() => setSyncIndex(idx)}
-                    className={`px-2 py-1 text-xs border rounded ${syncIndex === idx ? 'bg-primary text-white' : 'bg-muted/20 text-foreground'}`}>
-                    {img.instanceNumber}
-                  </button>
-                ))}
-              </div>
-            </Card>
-
-          </div>
+          <MultiViewportDicomViewer
+            worklistItem={worklistItem}
+            patient={patient}
+            onImageViewed={handleImageViewed}
+          />
         </div>
 
         {/* Sidebar - Patient & Study Info */}

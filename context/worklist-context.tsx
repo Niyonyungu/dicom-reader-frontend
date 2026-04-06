@@ -27,8 +27,8 @@ export function WorklistProvider({ children }: { children: ReactNode }) {
   };
 
   const updateWorklistItem = (id: string, item: Partial<WorklistItem>) => {
-    setWorklist(
-      worklist.map((w) => (w.id === id ? { ...w, ...item } : w))
+    setWorklist((prevWorklist) =>
+      prevWorklist.map((w) => (w.id === id ? { ...w, ...item } : w))
     );
   };
 
