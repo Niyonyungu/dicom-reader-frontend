@@ -45,6 +45,8 @@ export interface DicomImage {
   sliceThickness?: string;
   windowCenter?: number;
   windowWidth?: number;
+  rescaleSlope?: number;
+  rescaleIntercept?: number;
   viewed?: boolean;
   viewedAt?: string;
 }

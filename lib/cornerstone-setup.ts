@@ -22,6 +22,11 @@ declare global {
   }
 }
 
+export interface WindowPreset {
+  windowCenter: number;
+  windowWidth: number;
+}
+
 export interface ViewerState {
   currentImage: number;
   zoom: number;
@@ -85,7 +90,7 @@ export function generateMockDICOMImage(
 }
 
 // Cornerstone window/level presets for different imaging modalities
-export const windowPresets = {
+export const windowPresets: Record<string, Record<string, WindowPreset>> = {
   mri: {
     brain: { windowCenter: 40, windowWidth: 80 },
     default: { windowCenter: 128, windowWidth: 256 },
@@ -104,10 +109,12 @@ export const windowPresets = {
   },
 };
 
-export function getWindowPreset(modality: string, preset: string = 'default') {
-  const modalityLower = modality.toLowerCase() as keyof typeof windowPresets;
-  const presets = windowPresets[modalityLower] || windowPresets.xray;
-  return presets[preset as keyof typeof presets] || presets.default;
+export function getWindowPreset(modality: string, preset: string = 'default'): WindowPreset {
+  const modalityLower = modality.toLowerCase();
+  const presets: Record<string, WindowPreset> =
+    windowPresets[modalityLower] ?? windowPresets.xray;
+  const selectedPreset = presets[preset];
+  return selectedPreset ?? presets.default;
 }
 
 // Load DICOM files (demo fallback): if `dicomParser` is available, parse, else create mock pixel data.

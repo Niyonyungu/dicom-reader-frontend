@@ -5,10 +5,17 @@ import { DicomImage } from '@/lib/mock-data';
 import {
   defaultViewerState,
   ViewerState,
+  WindowPreset,
   generateMockDICOMImage,
   getWindowPreset,
   windowPresets,
 } from '@/lib/cornerstone-setup';
+
+type ViewerDicomImage = DicomImage & {
+  pixelData?: ImageData;
+  rescaleSlope?: number;
+  rescaleIntercept?: number;
+};
 import { MultiPlanarReconstruction, VolumeRenderer, HounsfieldUnitInspector } from '@/components/viewer/advanced-visualization';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -29,7 +36,7 @@ import {
 import { Slider } from '@/components/ui/slider';
 
 interface DicomViewerProps {
-  images: (DicomImage & { pixelData?: ImageData })[];
+  images: ViewerDicomImage[];
   modality: string;
   description: string;
   syncIndex?: number;
@@ -98,7 +105,7 @@ export function DicomViewer({
       const savedPreset = localStorage.getItem('dicomViewerWindowPreset');
       if (savedPreset) {
         setWindowPresetName(savedPreset);
-        const preset = getWindowPreset(modality, savedPreset);
+        const preset: WindowPreset = getWindowPreset(modality, savedPreset);
         setViewerState((prev) => ({
           ...prev,
           windowCenter: preset.windowCenter,
@@ -111,7 +118,7 @@ export function DicomViewer({
   }, [modality]);
 
   const applyWindowPreset = (preset: string) => {
-    const selectedPreset = getWindowPreset(modality, preset);
+    const selectedPreset: WindowPreset = getWindowPreset(modality, preset);
     setViewerState((prev) => ({
       ...prev,
       windowCenter: selectedPreset.windowCenter,
