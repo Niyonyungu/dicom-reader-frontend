@@ -221,14 +221,73 @@ We've created 23 AI prompts in `BACKEND_AI_PROMPTS.md`. Use them with Claude or 
 
 **Phase 1 (Setup - Prompts 1-3)**
 
-```bash
+```powershell
 # After getting code from prompts:
 cd dicom-reader-backend
 python -m venv venv
-source venv/bin/activate
+# Windows PowerShell activation
+.\venv\Scripts\Activate.ps1
+# If you use cmd.exe instead, run:
+# .\venv\Scripts\activate.bat
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 python -m alembic upgrade head
 uvicorn app.main:app --reload
+```
+
+**Phase 1b: Local-only backend setup (no Docker)**
+
+This is the path to run your backend locally without Docker.
+
+1. Install Python 3.11+ from https://www.python.org/downloads/ and enable "Add Python to PATH".
+2. Open PowerShell and navigate to your backend project folder.
+3. Create a Python virtual environment:
+
+```powershell
+cd dicom-reader-backend
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+4. Create your environment file and edit it:
+
+```powershell
+Copy-Item .env.example .env
+notepad .env
+```
+
+5. If you want a simple local database, use SQLite by setting in `.env`:
+
+```text
+DATABASE_URL=sqlite:///./dev.db
+```
+
+6. Run database migrations:
+
+```powershell
+python -m alembic upgrade head
+```
+
+7. Start the backend server:
+
+```powershell
+uvicorn app.main:app --reload --port 8000
+```
+
+8. Open the API docs in a browser:
+
+```text
+http://localhost:8000/docs
+```
+
+9. If you use Celery tasks, run a second terminal:
+
+```powershell
+cd dicom-reader-backend
+.\venv\Scripts\Activate.ps1
+celery -A app.tasks.celery_app worker -l info
 ```
 
 **Phase 2 (Auth & Users - Prompts 4-6)**
@@ -252,18 +311,27 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 
 **Continue through all prompts...**
 
-### Step 3: Test Locally with Docker
+### Step 3: Test Locally without Docker
 
-```bash
-# Start all services
-docker-compose up -d
+```powershell
+# Start the local backend
+cd dicom-reader-backend
+.\venv\Scripts\Activate.ps1
+uvicorn app.main:app --reload --port 8000
 
-# Run migrations
-docker-compose exec backend alembic upgrade head
+# If you use Celery, open another terminal and run:
+# cd dicom-reader-backend
+# .\venv\Scripts\Activate.ps1
+# celery -A app.tasks.celery_app worker -l info
+```
 
 # Backend available at: http://localhost:8000
+
 # API docs at: http://localhost:8000/docs
-```
+
+### Optional: Docker only if you want containers
+
+If you prefer Docker later, the existing docker-compose instructions remain available in the docs. For now, skip Docker and use the local Python environment above.
 
 ### Step 4: Connect Frontend
 

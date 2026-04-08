@@ -1,38 +1,110 @@
-# Backend Implementation Prompts for AI
+# Backend Implementation Prompts for AI - Local PostgreSQL Setup
+
+**Important:** These prompts are designed for **local development WITHOUT Docker**. You will run the backend directly on your computer using Python, PostgreSQL, and Redis.
+
+**Setup Requirements:**
+
+- Python 3.11+ installed and in PATH
+- PostgreSQL 14+ running locally (download from https://www.postgresql.org/download/)
+- Redis running locally (optional, for caching; download from https://redis.io/download or use Windows binary)
+- Environment: Windows PowerShell, macOS Terminal, or Linux shell
+
+**Development Flow:**
+
+1. Create `dicom-reader-backend` folder
+2. Use prompts below with Claude/ChatGPT to generate code
+3. Place generated files in the backend folder
+4. Follow BACKEND_LOCAL_SETUP.md for exact commands
+5. Run locally with `uvicorn app.main:app --reload`
 
 Use these prompts with Claude, ChatGPT, or other AI tools to implement your backend. Copy-paste each prompt as-is for the best results.
 
 ---
 
-## 📋 PROJECT SETUP & INITIALIZATION
+## ⚡ Quick Start
 
-### Prompt 1: Project Setup & Dependencies
+### 1. Before anything, install and start PostgreSQL locally:
+
+- Windows: Download from https://www.postgresql.org/download/windows/
+- macOS: `brew install postgresql && brew services start postgresql`
+- Linux: `sudo apt-get install postgresql`
+
+### 2. Create your backend folder:
+
+```powershell
+mkdir dicom-reader-backend
+cd dicom-reader-backend
+```
+
+### 3. For EACH prompt below (1-19):
+
+- Copy the entire prompt (the code block)
+- Paste into Claude or ChatGPT
+- Get the generated code
+- Save to the backend folder following the file paths listed
+
+### 4. After all prompts are done:
+
+- Follow BACKEND_LOCAL_SETUP.md for exact setup commands
+- Run `uvicorn app.main:app --reload`
+- Visit http://localhost:8000/docs
+
+### ⚠️ Skip for now:
+
+- Prompt 20 (Celery - only if you need background tasks)
+- Prompt 21 (Docker - only when deploying to production)
+
+---
+
+## 📋 AI PROMPTS (Use These in Order)
+
+### PROJECT SETUP & INITIALIZATION
+
+### Prompt 1: Project Setup & Dependencies (Local PostgreSQL)
 
 ```
 Create a FastAPI project structure for a DICOM medical imaging viewer backend.
+
+**IMPORTANT: This is for LOCAL development WITHOUT Docker.**
 
 Requirements:
 - Python 3.11+
 - FastAPI web framework
 - SQLAlchemy 2.0 for ORM
-- PostgreSQL database
+- PostgreSQL database (running on localhost)
 - JWT authentication with PyJWT
 - Pydantic for data validation
 - pydicom for DICOM file processing
 - Pillow for image manipulation
-- Redis for caching
-- Celery for async tasks
-- three.js integration for 3D visualization (optional, for advanced features)
 - NumPy for advanced image processing (MPR, HU calculations)
+- SciPy for scientific calculations
+- python-multipart for file uploads
+- python-jose for JWT tokens
+- passlib for password hashing
+- alembic for database migrations
+- uvicorn as ASGI server
+- Redis Python client redis (optional, for caching)
+- Celery (optional, for async tasks)
 
 Create:
-1. requirements.txt with all dependencies and versions
-2. .env.example with all configuration variables
+1. requirements.txt with all dependencies and versions (NO Docker packages)
+2. .env.example with configuration for LOCAL PostgreSQL:
+   - DATABASE_URL=postgresql://user:password@localhost:5432/dicom_db
+   - JWT_SECRET_KEY=your-secret-key
+   - JWT_ALGORITHM=HS256
+   - REDIS_URL=redis://localhost:6379 (optional)
 3. pyproject.toml with project metadata
-4. Dockerfile for containerization
-5. docker-compose.yml for local development (PostgreSQL, Redis, RabbitMQ)
+4. Alembic configuration for database migrations
+5. Folder structure: app/, app/api/, app/models/, app/schemas/, app/crud/, app/core/, app/services/
 
-Include production-ready configurations.
+NOTE: Do NOT include Dockerfile or docker-compose.yml. Those are optional later.
+
+Include instructions for:
+- Creating Python virtual environment: `python -m venv venv`
+- Activating: `.\\venv\\Scripts\\Activate.ps1` (Windows) or `source venv/bin/activate` (Unix)
+- Installing: `pip install -r requirements.txt`
+- Database setup: `alembic upgrade head`
+- Running: `uvicorn app.main:app --reload`
 ```
 
 ### Prompt 2: FastAPI Main Application
@@ -961,113 +1033,87 @@ Response format:
 
 ## 🚀 DEPLOYMENT & CELERY TASKS
 
-### Prompt 20: Celery Async Task Configuration
+### Prompt 20: Celery Async Task Configuration (OPTIONAL - For Advanced Use)
 
 ```
 
-Create Celery configuration for async DICOM processing.
+**OPTIONAL:** Start with synchronous processing. Add Celery ONLY if you need background tasks.
 
-Create files:
+If you later want async DICOM processing, create files:
 
 1. app/tasks/celery_app.py - Celery app configuration
 2. app/tasks/dicom_processing_tasks.py - DICOM processing tasks
-3. app/tasks/notification_tasks.py - Email notifications
+3. app/tasks/notification_tasks.py - Email notifications (if sending emails)
 
-Requirements:
+Requirements (when implementing Celery):
 
-- Message broker: RabbitMQ or Redis
+- Message broker: Redis (installed locally)
 - Result backend: Redis
-- Task routing and priority queues
-- Task monitoring with Flower
+- Celery library (add to requirements.txt)
+- RabbitMQ alternative to Redis (optional)
 
 Configuration:
 
-- Broker URL: from environment
-- Result backend: Redis
+- Broker URL: redis://localhost:6379/0
+- Result backend: redis://localhost:6379/1
 - Task serializer: JSON
 - Accept content: JSON
 - Task time limit: 1 hour for DICOM processing
 - Task soft time limit: 50 minutes
 
-Celery Tasks:
+Example Celery Tasks (implement only if needed):
 
-1. process_dicom_upload.delay(upload_id, file_paths, patient_id)
-   - Process uploaded DICOM files
+1. process_dicom_upload(upload_id, file_paths, patient_id)
+   - Process uploaded DICOM files in background
    - Extract metadata
    - Create database records
    - Render images
-   - Send completion email
 
-2. render_image.delay(instance_id, options)
-   - Render DICOM image with options
-   - Cache result in Redis
+2. render_image(instance_id, options)
+   - Render DICOM image with windowing
+   - Cache in Redis
    - Return image path
 
-3. export_audit_logs.delay(start_date, end_date, format, user_email)
-   - Export audit logs
-   - Send via email
-   - Return file path
+3. export_audit_logs(start_date, end_date, format)
+   - Export audit logs to CSV
 
-4. generate_volume_data.delay(study_id, series_id)
-   - Generate 3D volume data for visualization
-   - Used for MPR, MIP, 3D rendering
+To use Celery locally:
 
-5. send_email.delay(recipient, subject, body, attachment_path)
-   - Send email notifications
-   - Upload completion, report ready, etc
+1. Install Redis
+2. Add Celery to requirements.txt
+3. Create tasks/ folder with celery configuration
+4. Run: `celery -A app.tasks.celery_app worker -l info`
 
-Include error handling, retries, and logging.
+FOR NOW: You can skip Celery and do synchronous processing in the endpoints.
 
 ```
 
-### Prompt 21: Docker Deployment Configuration
+### Prompt 21: Docker Deployment Configuration (OPTIONAL - For Production Later)
 
 ```
 
-Create Docker setup for multi-container deployment.
+**OPTIONAL:** You do NOT need Docker now. Use this only when deploying to production or a shared server.
 
-Create:
+When you ARE ready for Docker production deployment, create:
 
-1. Dockerfile - FastAPI application container
-2. docker-compose.yml - Multi-container orchestration
-3. nginx.conf - Reverse proxy configuration
+1. Dockerfile - FastAPI application container (for production)
+2. docker-compose.yml - Multi-container orchestration (for production)
+3. nginx.conf - Reverse proxy configuration (optional)
 
-Dockerfile features:
-
-- Multi-stage build
-- Python 3.11 base image
-- Install system dependencies
-- Copy application code
-- Expose port 8000
-- Health check
-- Non-root user for security
-
-docker-compose.yml services:
+For production, you would use:
 
 1. backend - FastAPI application (uvicorn)
-2. db - PostgreSQL 14
-3. redis - Redis cache
-4. rabbitmq - RabbitMQ message broker
-5. celery_worker - Celery worker for DICOM processing
-6. celery_beat - Celery beat scheduler for cleanup tasks
-7. flower - Celery monitoring UI
+2. db - PostgreSQL 14 container
+3. redis - Redis cache container
+4. celery_worker - Celery worker for async tasks (if using Celery)
+5. flower - Celery monitoring UI (optional)
 
-Volumes:
+BUT FOR NOW:
 
-- dicom_files - Store uploaded DICOM files
-- postgres_data - Database persistence
-
-Networks:
-
-- Internal network for service communication
-- Only backend/nginx exposed externally
-
-Environment variables:
-
-- All required .env variables for each service
-
-Health checks for all services.
-Database migrations run on startup.
+- Skip Docker configuration
+- Run everything locally on your computer
+- Follow BACKEND_LOCAL_SETUP.md for local setup
+- Use this prompt ONLY after local development is complete and working
 
 ```
 
@@ -1183,10 +1229,10 @@ Copy this checklist and check off each item as you implement:
 - [ ] Prompt 18: Audit service implementation
 - [ ] Prompt 19: Worklist endpoints
 
-### Phase 6: Async & Infrastructure
+### Phase 6: Async & Infrastructure (OPTIONAL - Add Later)
 
-- [ ] Prompt 20: Celery async task configuration
-- [ ] Prompt 21: Docker deployment configuration
+- [ ] Prompt 20: Celery async task configuration (skip for now, add if needed)
+- [ ] Prompt 21: Docker deployment configuration (skip for now, use for production)
 
 ### Phase 7: Quality & Documentation
 
@@ -1195,7 +1241,51 @@ Copy this checklist and check off each item as you implement:
 
 ---
 
-## 🔗 Frontend Integration
+## � LOCAL DATABASE SETUP (Required Before Starting)
+
+Before running the backend, you need PostgreSQL running locally:
+
+### Windows:
+
+1. Download PostgreSQL from https://www.postgresql.org/download/windows/
+2. Run installer, choose password for `postgres` user (remember it!)
+3. Choose port 5432 (default)
+4. Finish installation
+5. PostgreSQL service should auto-start
+
+### macOS:
+
+```bash
+brew install postgresql
+brew services start postgresql
+```
+
+### Linux:
+
+```bash
+sudo apt-get install postgresql
+sudo service postgresql start
+```
+
+### Create Database:
+
+For all OS, open Terminal/PowerShell and run:
+
+```powershell
+# Windows PowerShell
+psql -U postgres -c "CREATE DATABASE dicom_db;"
+
+# Or use pgAdmin (GUI tool included with PostgreSQL)
+```
+
+Set in `.env`:
+```text
+DATABASE_URL=postgresql://postgres:your_password@localhost:5432/dicom_db
+```
+
+---
+
+## �🔗 Frontend Integration
 
 After implementing backend, update your frontend:
 
@@ -1218,30 +1308,36 @@ After implementing backend, update your frontend:
    });
 ````
 
-4. **Update environment variables**:
+4. **Update frontend environment variables**:
+
    ```env
    NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+   NEXT_PUBLIC_API_BASEURL=http://localhost:8000
    ```
+
+5. **Test the connection**:
+   - Backend running: http://localhost:8000/docs
+   - Frontend running: http://localhost:3000
+   - Try logging in (use credentials you set in backend)
 
 ---
 
-## ✅ Summary
+## ✅ What Has Been Updated
 
-You now have:
+**These prompts have been updated for LOCAL PostgreSQL development (NO Docker):**
 
-1. **Complete backend specification** with all data models
-2. **23 AI prompts** for implementing each backend component
-3. **Database schema** with SQL
-4. **API endpoint specifications** with request/response formats
-5. **Deployment configuration** with Docker
-6. **Testing strategy** with pytest
+✅ **Prompt 1** - Removed Docker files, added local PostgreSQL setup instructions
+✅ **Prompt 20** - Marked as OPTIONAL, explained Celery for later only
+✅ **Prompt 21** - Marked as OPTIONAL, Docker only for production
+✅ **Added Quick Start** - Shows exactly how to start using these prompts
+✅ **Added PostgreSQL Setup** - Instructions for installing and configuring locally
+✅ **All 19 core prompts** - Now tailored for local development
 
-Next steps:
+**You should:**
 
-1. Use each prompt with Claude/ChatGPT to generate backend code
-2. Follow the implementation checklist
-3. Test locally with docker-compose
-4. Update frontend to use real API endpoints
-5. Deploy to production
+1. Install PostgreSQL locally FIRST
+2. Use Prompts 1-19 with Claude/ChatGPT
+3. Follow BACKEND_LOCAL_SETUP.md for commands
+4. Skip Prompts 20-21 unless you specifically need them
 
 Good luck! 🚀

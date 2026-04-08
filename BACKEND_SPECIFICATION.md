@@ -947,26 +947,51 @@ volumes:
 
 ## 📖 Development Setup
 
-```bash
+### Local setup without Docker (Windows)
+
+```powershell
 # Create virtual environment
 python -m venv venv
-source venv/bin/activate
+.\venv\Scripts\Activate.ps1
 
 # Install dependencies
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 
 # Set up environment
-cp .env.example .env
+Copy-Item .env.example .env
+notepad .env
 
 # Run migrations
-alembic upgrade head
+python -m alembic upgrade head
 
 # Start backend
 uvicorn app.main:app --reload --port 8000
 
-# In another terminal, start Celery
-celery -A app.tasks.celery_app worker -l info
+# In another terminal, start Celery if your backend uses async tasks
+# cd dicom-reader-backend
+# .\venv\Scripts\Activate.ps1
+# celery -A app.tasks.celery_app worker -l info
 ```
+
+### Local setup without Docker (macOS/Linux)
+
+```bash
+python -m venv venv
+source venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+cp .env.example .env
+nano .env
+python -m alembic upgrade head
+uvicorn app.main:app --reload --port 8000
+```
+
+### Notes
+
+- You do not need Docker to run the backend locally.
+- Use SQLite for a simple local database by setting `DATABASE_URL=sqlite:///./dev.db` in `.env`.
+- Use PostgreSQL or another database only when you are ready for a more production-like environment.
 
 ---
 
