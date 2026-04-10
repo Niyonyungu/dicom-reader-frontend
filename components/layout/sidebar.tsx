@@ -13,6 +13,7 @@ import {
   BarChart3,
   ChevronLeft,
   Menu,
+  Shield,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -57,6 +58,12 @@ const navItems: NavItem[] = [
     label: 'Settings',
     icon: Settings,
     roles: ['admin', 'service'], // Only admin/service can access settings
+  },
+  {
+    href: '/dashboard/settings/rbac',
+    label: 'RBAC Matrix',
+    icon: Shield,
+    roles: ['admin'], // Only admin can view RBAC matrix
   },
 ];
 

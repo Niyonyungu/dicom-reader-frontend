@@ -28,6 +28,10 @@ export function TopBar({ sidebarVisible, setSidebarVisible }: TopBarProps) {
     router.push('/login');
   };
 
+  const handleProfile = () => {
+    router.push('/dashboard/profile');
+  };
+
   const handleSettings = () => {
     router.push('/dashboard/settings');
   };
@@ -77,6 +81,10 @@ export function TopBar({ sidebarVisible, setSidebarVisible }: TopBarProps) {
                     {user.username}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleProfile}>
+                    <User className="h-4 w-4 mr-2" />
+                    Profile
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleSettings}>
                     <Settings className="h-4 w-4 mr-2" />
                     Settings
