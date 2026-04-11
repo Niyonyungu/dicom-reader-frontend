@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { DicomImage } from '@/lib/mock-data';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import Image from 'next/image';
+import { useAuth } from '@/context/auth-context';
 import {
   defaultViewerState,
   ViewerState,

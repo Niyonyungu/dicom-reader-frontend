@@ -22,6 +22,14 @@ import {
   StudyCreateRequest,
   StudyUpdateRequest,
   StudyListFilters,
+  Series,
+  SeriesListResponse,
+  DicomInstance,
+  DicomListResponse,
+  DicomListFilters,
+  AuditLog,
+  AuditLogListResponse,
+  AuditLogFilters,
 } from "@/types/clinical-api";
 import { getAccessToken } from "@/lib/token-storage";
 
@@ -244,6 +252,145 @@ export async function searchStudies(
   });
 }
 
+/**
+ * Get all series in a study
+ * 
+ * @param studyId - Study ID
+ * @param page - Page number (default: 1)
+ * @param pageSize - Series per page (default: 50)
+ * @returns SeriesListResponse with paginated series
+ * @throws ApiError on failure
+ * 
+ * @example
+ * ```ts
+ * const response = await studiesService.getStudySeries(123);
+ * console.log(response.items); // Array of Series
+ * ```
+ */
+export async function getStudySeries(
+  studyId: number,
+  page: number = 1,
+  pageSize: number = 50
+): Promise<SeriesListResponse> {
+  const token = getAccessToken();
+  return get<SeriesListResponse>(
+    `/studies/${studyId}/series?page=${page}&page_size=${pageSize}`,
+    { authToken: token ?? undefined }
+  );
+}
+
+/**
+ * Get all instances (DICOM files) in a study
+ * 
+ * @param studyId - Study ID
+ * @param page - Page number (default: 1)
+ * @param pageSize - Instances per page (default: 50)
+ * @returns DicomListResponse with paginated instances
+ * @throws ApiError on failure
+ * 
+ * @example
+ * ```ts
+ * const response = await studiesService.getStudyInstances(123);
+ * console.log(response.items); // Array of DicomInstance
+ * ```
+ */
+export async function getStudyInstances(
+  studyId: number,
+  page: number = 1,
+  pageSize: number = 50
+): Promise<DicomListResponse> {
+  const token = getAccessToken();
+  return get<DicomListResponse>(
+    `/studies/${studyId}/instances?page=${page}&page_size=${pageSize}`,
+    { authToken: token ?? undefined }
+  );
+}
+
+/**
+ * Get all instances in a specific series
+ * 
+ * @param studyId - Study ID
+ * @param seriesUid - Series UID
+ * @param page - Page number (default: 1)
+ * @param pageSize - Instances per page (default: 50)
+ * @returns DicomListResponse with instances in the series
+ * @throws ApiError on failure
+ * 
+ * @example
+ * ```ts
+ * const response = await studiesService.getSeriesInstances(123, '1.2.3.4');
+ * ```
+ */
+export async function getSeriesInstances(
+  studyId: number,
+  seriesUid: string,
+  page: number = 1,
+  pageSize: number = 50
+): Promise<DicomListResponse> {
+  const token = getAccessToken();
+  return get<DicomListResponse>(
+    `/studies/${studyId}/series/${encodeURIComponent(seriesUid)}/instances?page=${page}&page_size=${pageSize}`,
+    { authToken: token ?? undefined }
+  );
+}
+
+/**
+ * Get audit logs for a specific study
+ * Requires audit_log.read permission
+ * 
+ * @param studyId - Study ID
+ * @param filters - Optional filters
+ * @returns AuditLogListResponse with audit trail
+ * @throws ApiError on failure (403 if missing audit_log.read permission)
+ * 
+ * @example
+ * ```ts
+ * const auditLogs = await studiesService.getStudyAuditLogs(123);
+ * console.log(auditLogs.items); // Access history
+ * ```
+ */
+export async function getStudyAuditLogs(
+  studyId: number,
+  filters?: AuditLogFilters
+): Promise<AuditLogListResponse> {
+  const token = getAccessToken();
+  let url = `/studies/${studyId}/audit`;
+  
+  if (filters) {
+    const params = new URLSearchParams();
+    if (filters.page) params.append('page', filters.page.toString());
+    if (filters.page_size) params.append('page_size', filters.page_size.toString());
+    if (filters.user_id) params.append('user_id', filters.user_id.toString());
+    if (filters.action) params.append('action', filters.action);
+    if (filters.severity) params.append('severity', filters.severity);
+    
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
+  }
+  
+  return get<AuditLogListResponse>(url, { authToken: token ?? undefined });
+}
+
+/**
+ * Archive a study (soft delete, only admins)
+ * Requires admin role
+ * 
+ * @param studyId - Study ID
+ * @returns Archived study object
+ * @throws ApiError on failure (403 if not admin, 404 if not found)
+ * 
+ * @example
+ * ```ts
+ * const archived = await studiesService.archiveStudy(123);
+ * console.log(archived.study_status); // 'archived'
+ * ```
+ */
+export async function archiveStudy(studyId: number): Promise<Study> {
+  const token = getAccessToken();
+  return del<Study>(`/studies/${studyId}`, { authToken: token ?? undefined });
+}
+
 export const studiesService = {
   listStudies,
   getStudy,
@@ -254,4 +401,9 @@ export const studiesService = {
   getStudiesByModality,
   getStudiesByDateRange,
   searchStudies,
+  getStudySeries,
+  getStudyInstances,
+  getSeriesInstances,
+  getStudyAuditLogs,
+  archiveStudy,
 };

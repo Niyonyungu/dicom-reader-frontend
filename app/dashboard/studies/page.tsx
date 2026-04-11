@@ -323,7 +323,7 @@ export default function StudiesPage() {
                                                     <Button
                                                         onClick={() =>
                                                             router.push(
-                                                                `/dashboard/viewer/${study.id}`
+                                                                `/dashboard/studies/${study.id}`
                                                             )
                                                         }
                                                         size="sm"
