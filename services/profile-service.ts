@@ -7,6 +7,7 @@ import {
   request,
   get,
   put,
+  post,
   ApiError,
 } from "@/lib/api-client";
 import {
@@ -15,7 +16,27 @@ import {
 } from "@/types/user";
 
 /**
- * Get current user (self)
+ * Get current user profile
+ * Requires Bearer token
+ *
+ * @returns Current user profile with metadata
+ *
+ * @example
+ * ```ts
+ * const profile = await profileService.getProfile();
+ * console.log(`Welcome ${profile.full_name}`);
+ * ```
+ */
+export async function getProfile(): Promise<UserResponse> {
+  try {
+    return await get<UserResponse>("/profile");
+  } catch (error) {
+    throw error;
+  }
+}
+
+/**
+ * Get current user (self) — DEPRECATED in favor of getProfile()
  * Requires Bearer token
  *
  * @returns Current user details with permissions
@@ -25,10 +46,12 @@ import {
  * const me = await profileService.getMe();
  * console.log(`Logged in as: ${me.full_name}`);
  * ```
+ * @deprecated Use getProfile() instead
  */
 export async function getMe(): Promise<UserResponse> {
   try {
-    return await get<UserResponse>("/users/me");
+    // Fallback to /profile endpoint per Prompt 5
+    return await get<UserResponse>("/profile");
   } catch (error) {
     throw error;
   }
@@ -39,10 +62,13 @@ export async function getMe(): Promise<UserResponse> {
  * Non-privileged: can only send email and/or full_name
  * Sending role or is_active as self returns 400
  *
+ * Endpoint: PUT /profile
+ *
  * @param data - Profile update data (email, full_name only)
  * @returns Updated user
  *
  * @throws ApiError with 400 if sending forbidden fields as non-admin
+ * @throws ApiError with 409 if email already in use
  *
  * @example
  * ```ts
@@ -62,7 +88,7 @@ export async function updateProfile(data: {
     if (payload.email) {
       payload.email = payload.email.trim().toLowerCase();
     }
-    return await put<UserResponse>("/users/me", payload);
+    return await put<UserResponse>("/profile", payload);
   } catch (error) {
     throw error;
   }
@@ -71,7 +97,9 @@ export async function updateProfile(data: {
 /**
  * Change own password
  * For non-privileged users: old_password is required
- * For admin/service: old_password is optional per backend
+ * Self-service endpoint that validates the old password first
+ *
+ * Endpoint: POST /profile/change-password
  *
  * @param oldPassword - Current password (required for non-admin)
  * @param newPassword - New password (must meet complexity requirements)
@@ -94,7 +122,7 @@ export async function changePassword(
       old_password: oldPassword,
       new_password: newPassword,
     };
-    return await put<UserResponse>("/users/me/password", payload);
+    return await post<UserResponse>("/profile/change-password", payload);
   } catch (error) {
     throw error;
   }

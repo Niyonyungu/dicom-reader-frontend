@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 
 export interface ProfileFormProps {
     /** Current user data */
@@ -96,17 +97,22 @@ export function ProfileForm({
             const handled = handleApiError(error);
 
             if (handled.status === 409) {
+                const message = "This email is already in use";
                 setErrors({
                     ...errors,
-                    email: "This email is already in use",
+                    email: message,
                 });
+                toast.error(message);
             } else if (handled.status === 400) {
                 // Usually "trying to send forbidden fields"
                 setApiError(handled.message);
+                toast.error(handled.message);
             } else if (handled.isValidation && handled.fieldErrors) {
                 setErrors(handled.fieldErrors);
+                toast.error("Validation error. Please check your input.");
             } else {
                 setApiError(handled.message);
+                toast.error(handled.message);
             }
         }
     };

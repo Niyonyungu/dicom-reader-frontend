@@ -25,6 +25,7 @@ export interface Patient {
   weight_kg?: number;
   height_cm?: number;
   medical_record_number?: string;
+  study_count?: number;
   created_by_id?: number;
   created_at: string;
   updated_at: string;
@@ -63,13 +64,23 @@ export interface PatientFilters {
   page?: number;
   page_size?: number;
   search?: string;
-  gender?: string;
+  gender?: "M" | "F" | "O";
+  status?: string;
+  min_age?: number;
+  max_age?: number;
 }
 
 /**
- * List patients with optional filters
+ * List patients with optional filters and pagination
  *
  * @param filters - Optional filters and pagination
+ *   - page: Page number (default 1)
+ *   - page_size: Results per page (default 20)
+ *   - search: Search by name, ID, or email
+ *   - gender: Filter by gender (M, F, O)
+ *   - status: Filter by status
+ *   - min_age: Minimum age filter
+ *   - max_age: Maximum age filter
  * @returns Paginated patients
  */
 export async function listPatients(
@@ -83,6 +94,9 @@ export async function listPatients(
     if (filters.page_size) params.append("page_size", filters.page_size.toString());
     if (filters.search) params.append("search", filters.search);
     if (filters.gender) params.append("gender", filters.gender);
+    if (filters.status) params.append("status", filters.status);
+    if (filters.min_age !== undefined) params.append("min_age", filters.min_age.toString());
+    if (filters.max_age !== undefined) params.append("max_age", filters.max_age.toString());
   }
 
   const queryString = params.toString();

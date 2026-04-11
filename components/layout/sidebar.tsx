@@ -16,6 +16,7 @@ import {
   Shield,
   Layers,
   FileCheck,
+  UserCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -60,6 +61,11 @@ const navItems: NavItem[] = [
     label: 'Reports',
     icon: FileText,
     roles: ['user', 'admin', 'service', 'radiographer', 'radiologist'],
+  },
+  {
+    href: '/dashboard/settings/profile',
+    label: 'Profile',
+    icon: UserCircle,
   },
   {
     href: '/dashboard/settings',

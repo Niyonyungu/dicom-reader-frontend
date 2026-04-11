@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 
 export interface ChangePasswordFormProps {
     /** Called when form is submitted */
@@ -112,14 +113,18 @@ export function ChangePasswordForm({
 
             if (handled.status === 400) {
                 // Wrong old password
+                const message = "Your current password is incorrect";
                 setErrors({
                     ...errors,
-                    oldPassword: "Your current password is incorrect",
+                    oldPassword: message,
                 });
+                toast.error(message);
             } else if (handled.isValidation && handled.fieldErrors) {
                 setErrors(handled.fieldErrors);
+                toast.error("Password validation failed. Please check requirements.");
             } else {
                 setApiError(handled.message);
+                toast.error(handled.message);
             }
         }
     };
@@ -192,8 +197,8 @@ export function ChangePasswordForm({
                                 <div
                                     key={idx}
                                     className={`text-xs ${hint.startsWith("✓")
-                                            ? "text-green-600"
-                                            : "text-muted-foreground"
+                                        ? "text-green-600"
+                                        : "text-muted-foreground"
                                         }`}
                                 >
                                     {hint}

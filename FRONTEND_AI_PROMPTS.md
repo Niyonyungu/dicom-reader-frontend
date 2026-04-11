@@ -227,67 +227,150 @@ NOTE: Self-service profile (non-privileged) is Prompt 5 — keep admin forms sep
 
 ## 👤 PROFILE & SELF-SERVICE
 
-### Prompt 5: Profile and Self-Service Password
+### Prompt 5: Profile and Self-Service
 
 ```
-Implement account/profile flows for any authenticated user. Remove mock profile data.
+Implement self-service profile management for the authenticated user.
 
 Endpoints:
-GET /api/v1/users/{id} — use id from auth user (me/login); allowed for self or admin/service
-PUT /api/v1/users/{id} — self may send ONLY email and/or full_name (sending role or is_active as self returns 400)
-PUT /api/v1/users/{id}/password — self (non-privileged): { "old_password", "new_password" }; admin/service resetting another user: omit old_password; admin/service changing own password: old_password optional per backend
+GET /api/v1/profile — Returns current user's profile
+PUT /api/v1/profile — Update self (email, full_name only)
+POST /api/v1/profile/change-password — Update own password: { "old_password", "new_password" }
 
 Requirements:
-- Profile form: display full_name, email; optional read-only role for non-admins
-- Separate admin user editor (Prompt 4) from this profile page
-- Password change: require current password for radiologist/radiographer/etc.; validate new_password complexity before submit
-- Clear errors for wrong old password (400)
+- Profile page showing full_name, email, role (read-only), and active status
+- Update form for full_name and email
+- Password change form with old_password validation and new_password complexity check
+- Inline success/error feedback
 
 Features:
-- Success toasts or inline confirmation after save
-- Refetch user/me after profile update so header/nav stays in sync
-
-NOTE: If the app merges profile and admin into one screen, branch fields by role to avoid 400 responses.
+- Toast notifications on successful update
+- Refetch user/me context after profile change to keep UI synchronized
 ```
 
----
-
-## 🏥 CLINICAL SCREENS
-
-### Prompt 6: Studies, DICOM, Measurements — Replace Clinical Mocks
+### Prompt 6: Patient Management — CRUD and Search
 
 ```
-Connect viewer, study list, upload, and measurement features to the live backend.
+Connect the patient management screens to the live backend.
 
-**IMPORTANT:** Use OpenAPI (/openapi.json) as the source of truth for exact paths, query parameters, and bodies. This prompt is structural; backend coverage grows over time.
-
-Known route prefixes (require Bearer + permission checks on server):
-- /api/v1/studies — e.g. study.read, study.delete (per route)
-- /api/v1/dicom — e.g. dicom.upload, dicom.read
-- /api/v1/measurements — e.g. measurement.read, measurement.write
+Endpoints:
+GET /api/v1/patients — List with pagination and filters (gender, status, min_age, max_age)
+POST /api/v1/patients — Create patient (PatientCreate)
+GET /api/v1/patients/{id} — Detailed patient info including study_count
+PUT /api/v1/patients/{id} — Update patient (PatientUpdate)
+DELETE /api/v1/patients/{id} — Soft delete (Admin only, only if study_count is 0)
+GET /api/v1/patients/search?q={text} — Search by name, ID, or email
 
 Requirements:
-- Before calling an endpoint, gate UI with can('permission') from Prompt 3
-- Remove hard-coded study/instance/measurement arrays; use loading skeletons and empty states
-- Handle 403 with a dedicated “no permission” message
-
-Implement:
-1. For each existing screen, map one primary backend call; implement service layer methods
-2. Align types with API responses (snake_case in JSON)
-3. File upload flows must use multipart if the endpoint specifies multipart (see OpenAPI)
+- Pagination UI (limit/offset)
+- Advanced filtering sidebar (gender, age range)
+- Real-time search or search-on-enter for patient discovery
+- Display calculated 'age' from the response
+- MRN and Patient ID uniqueness error handling (409 Conflict)
 
 Features:
-- Retry or user messaging on network failure
-- Dev-only logging of request_id on errors
-
-NOTE: Update this prompt’s detail in Appendix A when new clinical endpoints are finalized on the backend.
+- Patient detail view showing associated study list (Prompt 7)
+- Loading skeletons for patient list
 ```
 
----
+### Prompt 7: Study Browser — List, Series, and Instances
 
-## ⚙️ ADMIN TOOLS
+```
+Implement the clinical study browser to navigate DICOM hierarchy.
 
-### Prompt 7: RBAC Matrix Viewer (Optional)
+Endpoints:
+GET /api/v1/studies — List with filters (modality, status, patient_id)
+GET /api/v1/studies/{id} — Study details and statistics
+GET /api/v1/studies/{id}/series — List series in study
+GET /api/v1/studies/{id}/instances — List all instances in study
+GET /api/v1/studies/{id}/audit — View study-specific audit history (audit_log.read permission)
+DELETE /api/v1/studies/{id} — Archive study (Admin only)
+
+Requirements:
+- Study list with modality icons and status badges (new, ongoing, completed, archived)
+- Deep navigation: Study -> Series -> Instance
+- Display statistics: Total series, total images, and storage size
+- Archive action for admins with confirmation
+
+Features:
+- Filter studies by modality (CT, MRI, XR, etc.) and date range
+- Audit log modal/tab for clinical compliance tracking
+```
+
+### Prompt 8: DICOM Viewer — Rendering and Image Manipulation
+
+```
+Implement the image viewer using the backend's on-the-fly rendering service.
+
+Endpoints:
+GET /api/v1/instances/{id}/image — Main rendering route
+GET /api/v1/instances/{id}/info — DICOM tag list (clinical info)
+GET /api/v1/instances/{id}/dicom — Download original file
+
+Render Parameters (Query String):
+- format: png | jpeg | webp
+- preset: lung | bone | brain | mediastinum
+- window_center, window_width: custom HU values
+- zoom: 1.0 to 4.0
+- rotate: 0, 90, 180, 270
+- flip_horizontal, flip_vertical: boolean
+- filter: none, sharpen, smooth, edge_detect
+
+Requirements:
+- Viewer component that constructs rendering URLs dynamically based on UI controls
+- Presets selector for quick windowing (Lung, Bone, etc.)
+- Interactive controls for zoom, rotation, and flipping
+- Display DICOM tags in a side panel or modal
+- Implement ETag-based caching for rendered images
+
+Features:
+- Smooth loading transitions between images
+- Download action for the original .dcm file
+```
+
+### Prompt 9: DICOM Upload — Async Upload and Progress
+
+```
+Implement the DICOM ingestion flow with real-time progress tracking.
+
+Endpoints:
+POST /api/v1/dicom/upload — Multipart upload (multiple files + form data)
+GET /api/v1/dicom/upload-status/{upload_id}?task_id={task_id} — Progress tracking
+POST /api/v1/dicom/validate — Quick file validation
+
+Requirements:
+- Multi-file dropzone for DICOM (.dcm) files
+- Form for optional metadata (Patient ID, Study Description, etc.)
+- Progress bar driven by the upload-status endpoint (polling)
+- Handle "processing", "completed", and "failed" states
+- Display processing results: files processed vs. failed
+
+Features:
+- Drag-and-drop support
+- Validation feedback before starting large uploads
+```
+
+### Prompt 10: Audit Logs — Compliance Dashboard
+
+```
+Add an audit trail dashboard for administrators to monitor system activity.
+
+Endpoints:
+GET /api/v1/audit-logs — List with pagination and filters (user_id, action, entity_type)
+GET /api/v1/audit-logs/{id} — Detailed log entry
+
+Requirements:
+- Paginated table of system events
+- Filter by action (e.g., LOGIN, CREATE_STUDY, DELETE_PATIENT)
+- Search by User ID or Entity Type
+- Display metadata JSON in a readable format (e.g., code block or key-value list)
+
+Features:
+- Color-coded action types for better scannability
+- Link to user profile or entity where applicable
+```
+
+### Prompt 11: RBAC Matrix Viewer (Optional)
 
 ```
 Add a read-only admin page that displays the role → permission matrix from the database.
@@ -389,6 +472,63 @@ Min 8 characters; at least one uppercase, lowercase, digit, special character.
   };
 }
 ```
+
+### Profile endpoints
+
+| Method | Path                       | Auth   | Description            |
+| ------ | -------------------------- | ------ | ---------------------- |
+| GET    | `/profile`                 | Bearer | Get self profile       |
+| PUT    | `/profile`                 | Bearer | Update email/full_name |
+| POST   | `/profile/change-password` | Bearer | Change own password    |
+
+### Patients endpoints
+
+| Method | Path               | Auth   | Description          |
+| ------ | ------------------ | ------ | -------------------- |
+| GET    | `/patients`        | Bearer | List + filters       |
+| POST   | `/patients`        | Bearer | Create patient       |
+| GET    | `/patients/{id}`   | Bearer | Detail + study_count |
+| PUT    | `/patients/{id}`   | Bearer | Update info          |
+| DELETE | `/patients/{id}`   | Admin  | Soft delete          |
+| GET    | `/patients/search` | Bearer | Search query `q`     |
+
+### Studies endpoints
+
+| Method | Path                      | Auth   | Description                |
+| ------ | ------------------------- | ------ | -------------------------- |
+| GET    | `/studies`                | Bearer | List + filters             |
+| POST   | `/studies`                | Bearer | Create (Tech/Radiographer) |
+| GET    | `/studies/{id}`           | Bearer | Detail + stats             |
+| PUT    | `/studies/{id}`           | Bearer | Update status/info         |
+| GET    | `/studies/{id}/series`    | Bearer | List series                |
+| GET    | `/studies/{id}/instances` | Bearer | List all instances         |
+| GET    | `/studies/{id}/audit`     | Bearer | Study audit trail          |
+| DELETE | `/studies/{id}`           | Admin  | Archive study              |
+
+### Instances endpoints
+
+| Method | Path                     | Auth   | Description           |
+| ------ | ------------------------ | ------ | --------------------- |
+| GET    | `/instances/{id}`        | Bearer | Metadata              |
+| GET    | `/instances/{id}/image`  | Bearer | **Rendered image**    |
+| GET    | `/instances/{id}/info`   | Bearer | DICOM tags            |
+| GET    | `/instances/{id}/dicom`  | Bearer | Download .dcm         |
+| POST   | `/instances/{id}/render` | Bearer | Custom render request |
+
+### DICOM Upload endpoints
+
+| Method | Path                        | Auth   | Description           |
+| ------ | --------------------------- | ------ | --------------------- |
+| POST   | `/dicom/upload`             | Bearer | Multipart ingestion   |
+| GET    | `/dicom/upload-status/{id}` | Bearer | Progress (task-based) |
+| POST   | `/dicom/validate`           | Bearer | File validation       |
+
+### Audit Log endpoints
+
+| Method | Path               | Auth  | Description    |
+| ------ | ------------------ | ----- | -------------- |
+| GET    | `/audit-logs`      | Admin | List + filters |
+| GET    | `/audit-logs/{id}` | Admin | Detailed event |
 
 ### Users endpoints
 

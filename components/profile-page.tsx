@@ -17,6 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 export function ProfilePage() {
     const { user, refresh, isLoading: authLoading } = useAuth();
@@ -41,6 +42,7 @@ export function ProfilePage() {
             await refresh();
 
             setSuccessMessage("Profile updated successfully");
+            toast.success("Profile updated successfully");
             setTimeout(() => setSuccessMessage(null), 3000);
         } catch (error) {
             throw error;
@@ -61,6 +63,7 @@ export function ProfilePage() {
             await profileService.changePassword(oldPassword, newPassword);
 
             setSuccessMessage("Password changed successfully");
+            toast.success("Password changed successfully");
             setTimeout(() => setSuccessMessage(null), 3000);
         } catch (error) {
             throw error;
