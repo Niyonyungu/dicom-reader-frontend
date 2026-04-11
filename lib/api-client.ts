@@ -48,6 +48,7 @@ function createApiClient(): AxiosInstance {
       // Parse and log error details
       const parsed = parseApiError(error);
       if (process.env.NODE_ENV === "development") {
+        // eslint-disable-next-line no-console
         console.error(`[API Error] ${parsed.status} ${parsed.errorCode}:`, parsed.message);
       }
       return Promise.reject(error);

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Lock, User, Stethoscope, Eye, EyeOff } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,9 +29,12 @@ export default function LoginPage() {
 
     try {
       await login(username, password);
+      toast.success('Login successful! Redirecting...');
       router.push('/dashboard');
     } catch (err) {
-      setError('An error occurred during login');
+      const message = err instanceof Error ? err.message : 'An error occurred during login';
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -102,12 +106,12 @@ export default function LoginPage() {
                   )}
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-black ">Username</label>
+                    <label className="text-sm font-medium text-black ">UserEmail</label>
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                       <Input
                         type="text"
-                        placeholder="Enter username"
+                        placeholder="Enter Email"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         disabled={loading}

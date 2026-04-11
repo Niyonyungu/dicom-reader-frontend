@@ -6,6 +6,7 @@ import { WorklistProvider } from '@/context/worklist-context';
 import { PatientsProvider } from '@/context/patients-context';
 import { ReportsProvider } from '@/context/reports-context';
 import { setupApiInterceptor } from '@/lib/api-interceptor';
+import { Toaster } from 'sonner';
 
 function InterceptorSetup() {
   useEffect(() => {
@@ -25,6 +26,7 @@ export function Providers({ children }: { children: ReactNode }) {
           <PatientsProvider>
             <ReportsProvider>
               {children}
+              <Toaster position="top-right" richColors />
             </ReportsProvider>
           </PatientsProvider>
         </WorklistProvider>

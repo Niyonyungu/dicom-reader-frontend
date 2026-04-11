@@ -14,6 +14,8 @@ import {
   ChevronLeft,
   Menu,
   Shield,
+  Layers,
+  FileCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -36,34 +38,52 @@ const navItems: NavItem[] = [
     icon: ListTodo,
   },
   {
+    href: '/dashboard/studies',
+    label: 'Studies',
+    icon: Layers,
+    roles: ['user', 'admin', 'service', 'imaging-technician', 'radiologist'],
+  },
+  {
     href: '/dashboard/patients',
     label: 'Patients',
     icon: Users,
-    roles: ['admin', 'service', 'imaging-technician'], // Only these roles can manage patients
+    roles: ['admin', 'service', 'imaging-technician'],
   },
   {
     href: '/dashboard/upload',
     label: 'Upload DICOM',
     icon: Upload,
-    roles: ['admin', 'service', 'imaging-technician', 'radiographer'], // These roles can upload
+    roles: ['admin', 'service', 'imaging-technician', 'radiographer'],
   },
   {
     href: '/dashboard/reports',
     label: 'Reports',
     icon: FileText,
-    roles: ['user', 'admin', 'service', 'radiographer'], // Radiologists and users can create reports
+    roles: ['user', 'admin', 'service', 'radiographer', 'radiologist'],
   },
   {
     href: '/dashboard/settings',
     label: 'Settings',
     icon: Settings,
-    roles: ['admin', 'service'], // Only admin/service can access settings
+    roles: ['admin', 'service'],
   },
   {
     href: '/dashboard/settings/rbac',
     label: 'RBAC Matrix',
     icon: Shield,
-    roles: ['admin'], // Only admin can view RBAC matrix
+    roles: ['admin'],
+  },
+  {
+    href: '/dashboard/settings/users',
+    label: 'Manage Users',
+    icon: Users,
+    roles: ['admin'],
+  },
+  {
+    href: '/dashboard/settings/audit-logs',
+    label: 'Audit Logs',
+    icon: FileCheck,
+    roles: ['admin'],
   },
 ];
 
@@ -107,10 +127,8 @@ export function Sidebar({ visible, setSidebarVisible }: { visible: boolean; setS
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
         {visibleItems.map((item) => {
           const Icon = item.icon;
-          // make the dashboard item active only on exactly /dashboard, not every subroute
-          const isActive =
-            pathname === item.href ||
-            (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'));
+          // Exact match or direct child, but not parent of nested routes
+          const isActive = pathname === item.href;
 
           return (
             <Link
