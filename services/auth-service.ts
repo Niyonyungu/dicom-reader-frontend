@@ -14,6 +14,8 @@ import {
   RefreshTokenRequest,
   CurrentUserResponse,
 } from "@/types/api";
+import { UserCreate, UserResponse } from "@/types/user";
+import { getAccessToken } from "@/lib/token-storage";
 
 /**
  * Login with email and password
@@ -111,6 +113,56 @@ export async function logout(accessToken: string): Promise<void> {
 }
 
 /**
+ * Register a new user (admin only)
+ * Creates a new user account with the specified role (default: radiographer)
+ * Requires admin or service role
+ *
+ * @param userData - User creation data (email, full_name, password, role, is_active, is_verified)
+ * @returns Created user response
+ * @throws ApiError on 403 (not admin), 409 (email already exists), 422 (validation failed)
+ *
+ * @example
+ * ```ts
+ * try {
+ *   const newUser = await authService.register({
+ *     email: 'jsmith@hospital.com',
+ *     full_name: 'John Smith',
+ *     password: 'SecurePass123!',
+ *     role: 'radiologist',
+ *     is_active: true,
+ *     is_verified: true
+ *   });
+ *   console.log(`User created: ${newUser.id}`);
+ * } catch (error) {
+ *   if (error instanceof ApiError) {
+ *     if (error.status === 403) {
+ *       console.error('Only admins can register users');
+ *     } else if (error.status === 409) {
+ *       console.error('Email already in use');
+ *     }
+ *   }
+ * }
+ * ```
+ */
+export async function register(userData: UserCreate): Promise<UserResponse> {
+  const accessToken = getAccessToken();
+  
+  if (!accessToken) {
+    throw new Error("Authentication required to register users (admin role)");
+  }
+
+  // Normalize email
+  const body: UserCreate = {
+    ...userData,
+    email: userData.email.trim().toLowerCase(),
+    // Default role to radiographer if not specified
+    role: userData.role || "radiographer",
+  };
+
+  return post<UserResponse>("/auth/register", body, { authToken: accessToken });
+}
+
+/**
  * Check if backend is reachable (health check)
  * No auth required
  *
@@ -138,5 +190,6 @@ export const authService = {
   refresh,
   me,
   logout,
+  register,
   checkBackendHealth,
 };

@@ -290,7 +290,7 @@ export default function PatientsPage() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ) : patients && patients.items.length > 0 ? (
+          ) : patients && patients.items && patients.items.length > 0 ? (
             <div className="space-y-4">
               <div className="border rounded-lg overflow-hidden">
                 <Table>

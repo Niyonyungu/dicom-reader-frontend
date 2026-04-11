@@ -331,6 +331,7 @@ export interface StudyListFilters extends PaginationParams {
   study_date_from?: string; // ISO date
   study_date_to?: string; // ISO date
   status?: 'pending' | 'in_progress' | 'completed' | 'archived';
+  is_archived?: boolean; // Filter by archived status
   search?: string; // Search in description, patient name, etc.
 }
 

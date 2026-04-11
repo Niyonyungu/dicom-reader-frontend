@@ -52,10 +52,36 @@ import { getAccessToken } from "@/lib/token-storage";
  */
 export async function listStudies(filters?: StudyListFilters): Promise<StudyListResponse> {
   const token = getAccessToken();
-  return get<StudyListResponse>("/studies", { 
-    authToken: token ?? undefined,
-    body: filters,
-  });
+  const params = new URLSearchParams();
+
+  if (filters) {
+    if (filters.page) params.append("page", filters.page.toString());
+    if (filters.page_size) params.append("page_size", filters.page_size.toString());
+    if (filters.patient_id) params.append("patient_id", filters.patient_id.toString());
+    if (filters.modality) params.append("modality", filters.modality);
+    if (filters.status) params.append("status", filters.status);
+    if (filters.is_archived !== undefined) params.append("is_archived", filters.is_archived.toString());
+    if (filters.search) params.append("search", filters.search);
+  }
+
+  const queryString = params.toString();
+  const url = `/studies${queryString ? `?${queryString}` : ""}`;
+
+  // Backend returns response with 'studies' field (not 'items')
+  const response = await get<{
+    total: number;
+    page: number;
+    page_size: number;
+    studies: Study[];
+  }>(url, { authToken: token ?? undefined });
+
+  // Normalize response to use 'items' field for consistency with UI
+  return {
+    total: response.total,
+    page: response.page,
+    page_size: response.page_size,
+    items: response.studies,
+  };
 }
 
 /**

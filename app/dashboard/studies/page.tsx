@@ -274,7 +274,7 @@ export default function StudiesPage() {
                         </div>
                     </CardContent>
                 </Card>
-            ) : studies && studies.items.length > 0 ? (
+            ) : studies && studies.items && studies.items.length > 0 ? (
                 <>
                     {/* Studies Table */}
                     <Card>

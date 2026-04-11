@@ -74,14 +74,16 @@ export interface PatientFilters {
  * List patients with optional filters and pagination
  *
  * @param filters - Optional filters and pagination
- *   - page: Page number (default 1)
+ *   - page: Page number (default 1, converted to skip/limit for backend)
  *   - page_size: Results per page (default 20)
  *   - search: Search by name, ID, or email
  *   - gender: Filter by gender (M, F, O)
  *   - status: Filter by status
  *   - min_age: Minimum age filter
  *   - max_age: Maximum age filter
- * @returns Paginated patients
+ * @returns Paginated patients wrapped in response object
+ * 
+ * NOTE: Backend returns bare array, frontend wraps it for consistency
  */
 export async function listPatients(
   filters?: PatientFilters
@@ -89,10 +91,16 @@ export async function listPatients(
   const token = getAccessToken();
   const params = new URLSearchParams();
 
+  // Backend uses skip/limit pagination, convert from page-based
+  const page = filters?.page || 1;
+  const pageSize = filters?.page_size || 20;
+  const skip = (page - 1) * pageSize;
+  
+  params.append("skip", skip.toString());
+  params.append("limit", pageSize.toString());
+
   if (filters) {
-    if (filters.page) params.append("page", filters.page.toString());
-    if (filters.page_size) params.append("page_size", filters.page_size.toString());
-    if (filters.search) params.append("search", filters.search);
+    if (filters.search) params.append("q", filters.search); // Backend uses 'q' not 'search'
     if (filters.gender) params.append("gender", filters.gender);
     if (filters.status) params.append("status", filters.status);
     if (filters.min_age !== undefined) params.append("min_age", filters.min_age.toString());
@@ -102,9 +110,19 @@ export async function listPatients(
   const queryString = params.toString();
   const url = `/patients${queryString ? `?${queryString}` : ""}`;
 
-  return get<PatientListResponse>(url, {
+  // Backend returns bare array: PatientResponse[]
+  // Frontend wraps it for consistency with other endpoints
+  const items = await get<Patient[]>(url, {
     authToken: token ?? undefined,
   });
+
+  // Wrap in response object for consistent UI handling
+  return {
+    total: items.length, // Approximate; backend doesn't provide actual total
+    page,
+    page_size: pageSize,
+    items: items,
+  };
 }
 
 /**
@@ -164,9 +182,9 @@ export async function deletePatient(patientId: string): Promise<void> {
 }
 
 /**
- * Search patients by name or MRN
+ * Search patients by name or MRN (uses dedicated /search endpoint)
  *
- * @param query - Search query
+ * @param query - Search query (min length 1)
  * @param page - Page number
  * @param pageSize - Results per page
  * @returns Search results
@@ -177,9 +195,29 @@ export async function searchPatients(
   pageSize: number = 20
 ): Promise<PatientListResponse> {
   const token = getAccessToken();
-  return listPatients({
-    search: query,
+  const params = new URLSearchParams();
+
+  // Backend search endpoint uses 'q' parameter
+  params.append("q", query);
+  
+  // Backend uses skip/limit pagination, convert from page-based
+  const skip = (page - 1) * pageSize;
+  params.append("skip", skip.toString());
+  params.append("limit", pageSize.toString());
+
+  const queryString = params.toString();
+  const url = `/patients/search${queryString ? `?${queryString}` : ""}`;
+
+  // Backend returns bare array: PatientResponse[]
+  const items = await get<Patient[]>(url, {
+    authToken: token ?? undefined,
+  });
+
+  // Wrap in response object for consistent UI handling
+  return {
+    total: items.length,
     page,
     page_size: pageSize,
-  });
+    items: items,
+  };
 }
