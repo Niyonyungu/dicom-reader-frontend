@@ -27,11 +27,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      if (login(username, password)) {
-        router.push('/dashboard');
-      } else {
-        setError('Invalid username or password');
-      }
+      await login(username, password);
+      router.push('/dashboard');
     } catch (err) {
       setError('An error occurred during login');
     } finally {

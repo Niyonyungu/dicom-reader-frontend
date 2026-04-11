@@ -330,7 +330,6 @@ export default function WorklistPage() {
                                 {studies.map((study) => (
                                     <TableRow
                                         key={study.id}
-                                        hover="bg-muted/50 cursor-pointer"
                                         className="hover:bg-muted/50 cursor-pointer"
                                     >
                                         <TableCell>{formatDate(study.study_date)}</TableCell>

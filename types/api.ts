@@ -3,6 +3,8 @@
  * Shared types for all API interactions
  */
 
+import { UserRole } from "./user";
+
 /**
  * Standard error envelope from backend
  * Used in all error responses (422, 403, 401, 500, etc.)
@@ -50,7 +52,7 @@ export interface CurrentUserResponse {
   id: number;
   email: string;
   full_name: string;
-  role: string;
+  role: UserRole;
   is_active: boolean;
   is_verified: boolean;
   permissions: string[];

@@ -17,7 +17,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { userService } from "@/services/user-service";
-import { UserResponse, UserListResponse, UserFormData, UserCreate, UserUpdate } from "@/types/user";
+import { UserResponse, UserListResponse, UserFormData, UserCreate, UserUpdate, UserRole } from "@/types/user";
 import { handleApiError } from "@/lib/api-error-handler";
 import { PermissionRouteGuard } from "@/components/permission-route-guard";
 import { ChangeRoleDialog } from "@/components/dialogs/change-role-dialog";
@@ -65,6 +65,7 @@ import {
     AlertDialogCancel,
     AlertDialogContent,
     AlertDialogDescription,
+    AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
@@ -214,7 +215,7 @@ export function UsersPage() {
     /**
      * Handle change role
      */
-    const handleChangeRole = async (userId: number, newRole: string) => {
+    const handleChangeRole = async (userId: number, newRole: UserRole) => {
         try {
             setRoleChangeLoading(true);
             await userService.changeUserRole(userId, newRole);

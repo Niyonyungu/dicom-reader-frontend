@@ -7,7 +7,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { UserFormData, UserResponse } from "@/types/user";
+import { UserFormData, UserResponse, UserRole } from "@/types/user";
 import { validatePassword } from "@/lib/password-validation";
 import { handleApiError } from "@/lib/api-error-handler";
 import {
@@ -45,12 +45,15 @@ export function UserForm({
 }: UserFormProps) {
     const isEditMode = !!initialUser;
 
+    // Default role constant
+    const DEFAULT_ROLE: UserRole = "radiologist";
+
     // Form state
     const [formData, setFormData] = useState<UserFormData>({
         email: initialUser?.email || "",
         full_name: initialUser?.full_name || "",
         password: "",
-        role: initialUser?.role || "radiologist",
+        role: initialUser?.role || DEFAULT_ROLE,
         is_active: initialUser?.is_active ?? true,
         is_verified: initialUser?.is_verified ?? false,
     });
@@ -212,16 +215,16 @@ export function UserForm({
                             <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                                 <div
                                     className={`h-full transition-all ${passwordStrength.score === 0
-                                            ? "w-0 bg-destructive"
-                                            : passwordStrength.score === 1
-                                                ? "w-1/5 bg-red-500"
-                                                : passwordStrength.score === 2
-                                                    ? "w-2/5 bg-orange-500"
-                                                    : passwordStrength.score === 3
-                                                        ? "w-3/5 bg-yellow-500"
-                                                        : passwordStrength.score === 4
-                                                            ? "w-4/5 bg-lime-500"
-                                                            : "w-full bg-green-500"
+                                        ? "w-0 bg-destructive"
+                                        : passwordStrength.score === 1
+                                            ? "w-1/5 bg-red-500"
+                                            : passwordStrength.score === 2
+                                                ? "w-2/5 bg-orange-500"
+                                                : passwordStrength.score === 3
+                                                    ? "w-3/5 bg-yellow-500"
+                                                    : passwordStrength.score === 4
+                                                        ? "w-4/5 bg-lime-500"
+                                                        : "w-full bg-green-500"
                                         }`}
                                 />
                             </div>
@@ -236,8 +239,8 @@ export function UserForm({
                                 <div
                                     key={idx}
                                     className={`text-xs ${hint.startsWith("✓")
-                                            ? "text-green-600"
-                                            : "text-muted-foreground"
+                                        ? "text-green-600"
+                                        : "text-muted-foreground"
                                         }`}
                                 >
                                     {hint}
@@ -258,7 +261,7 @@ export function UserForm({
                 <Select
                     value={formData.role}
                     onValueChange={(value) =>
-                        setFormData({ ...formData, role: value })
+                        setFormData({ ...formData, role: value as UserRole })
                     }
                     disabled={isLoading}
                 >

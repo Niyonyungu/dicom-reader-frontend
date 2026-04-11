@@ -6,7 +6,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserResponse } from "@/types/user";
+import { UserResponse, UserRole } from "@/types/user";
 import {
     Dialog,
     DialogContent,
@@ -31,7 +31,7 @@ export interface ChangeRoleDialogProps {
     user: UserResponse;
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
-    onSubmit: (userId: number, newRole: string) => Promise<void>;
+    onSubmit: (userId: number, newRole: UserRole) => Promise<void>;
     isLoading?: boolean;
 }
 
@@ -42,7 +42,7 @@ export function ChangeRoleDialog({
     onSubmit,
     isLoading = false,
 }: ChangeRoleDialogProps) {
-    const [newRole, setNewRole] = useState(user.role);
+    const [newRole, setNewRole] = useState<UserRole>(user.role);
     const [error, setError] = useState<string | null>(null);
 
     const handleSubmit = async () => {
@@ -83,7 +83,7 @@ export function ChangeRoleDialog({
                         <Label htmlFor="role">New Role</Label>
                         <Select
                             value={newRole}
-                            onValueChange={setNewRole}
+                            onValueChange={(value) => setNewRole(value as UserRole)}
                             disabled={isLoading}
                         >
                             <SelectTrigger>

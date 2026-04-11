@@ -18,6 +18,7 @@ import {
   UserListResponse,
   ChangePasswordRequest,
   ChangeUserRoleRequest,
+  UserRole,
 } from "@/types/user";
 
 /**
@@ -173,7 +174,7 @@ export async function deleteUser(id: number): Promise<void> {
  */
 export async function changeUserRole(
   id: number,
-  role: string
+  role: UserRole
 ): Promise<UserResponse> {
   try {
     return await put<UserResponse>(`/users/${id}/role`, { role });

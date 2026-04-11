@@ -4,13 +4,18 @@
  */
 
 /**
+ * Valid user roles
+ */
+export type UserRole = "admin" | "service" | "radiologist" | "imaging_technician" | "radiographer";
+
+/**
  * Create user request
  */
 export interface UserCreate {
   email: string;
   full_name: string;
   password: string;
-  role: "admin" | "service" | "radiologist" | "imaging_technician" | "radiographer";
+  role: UserRole;
   is_active?: boolean;
   is_verified?: boolean;
 }
@@ -23,7 +28,7 @@ export interface UserUpdate {
   full_name?: string;
   is_active?: boolean;
   is_verified?: boolean;
-  role?: string;
+  role?: UserRole;
 }
 
 /**
@@ -33,7 +38,7 @@ export interface UserResponse {
   id: number;
   email: string;
   full_name: string;
-  role: string;
+  role: UserRole;
   is_active: boolean;
   is_verified: boolean;
   created_at: string;
@@ -62,7 +67,7 @@ export interface ChangePasswordRequest {
  * Change user role request
  */
 export interface ChangeUserRoleRequest {
-  role: string;
+  role: UserRole;
 }
 
 /**
@@ -80,7 +85,7 @@ export interface UserFormData {
   email: string;
   full_name: string;
   password?: string;
-  role: string;
+  role: UserRole;
   is_active: boolean;
   is_verified: boolean;
 }
