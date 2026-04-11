@@ -1,591 +1,1343 @@
-# Frontend Implementation Prompts for AI - DICOM Viewer Integration
+# Backend Implementation Prompts for AI - Local PostgreSQL Setup
 
-**Important:** These prompts assume you **already have a frontend app** (React, Vue, Next.js, etc.) that still uses **mock data, static JSON, or hard-coded responses**. Your job is to **replace those code paths** with real calls to the **dicom-reader-backend** (FastAPI) described in `BACKEND_AI_PROMPTS.md` and in the **Appendix** below.
+**Important:** These prompts are designed for **local development WITHOUT Docker**. You will run the backend directly on your computer using Python, PostgreSQL, and Redis.
 
-**Pairing with the backend:**
+**Setup Requirements:**
 
-- Backend runs locally (typical): `http://localhost:8000`
-- API base path: **`/api/v1`**
-- OpenAPI: `http://localhost:8000/openapi.json` (authoritative for paths and schemas as the backend grows)
-- Interactive docs: `http://localhost:8000/docs` (when enabled)
+- Python 3.11+ installed and in PATH
+- PostgreSQL 14+ running locally (download from https://www.postgresql.org/download/)
+- Redis running locally (optional, for caching; download from https://redis.io/download or use Windows binary)
+- Environment: Windows PowerShell, macOS Terminal, or Linux shell
 
-**Prerequisites:**
+**Development Flow:**
 
-- Node.js LTS and your framework’s toolchain installed
-- Frontend project folder (existing SPA)
-- Backend running per `DEVELOPMENT.md` / `BACKEND_LOCAL_SETUP.md` (e.g. `uvicorn app.main:app --reload`)
-- PostgreSQL (and migrations) applied on the backend so auth and users work
+1. Create `dicom-reader-backend` folder
+2. Use prompts below with Claude/ChatGPT to generate code
+3. Place generated files in the backend folder
+4. Follow BACKEND_LOCAL_SETUP.md for exact commands
+5. Run locally with `uvicorn app.main:app --reload`
 
-**Development flow:**
-
-1. Point the frontend at the backend using an env var (see Quick Start).
-2. Ensure the backend **`ALLOWED_ORIGINS`** includes your frontend origin (e.g. `http://localhost:3000`).
-3. For **each prompt below (1–7)**, copy the **entire code block** under that prompt.
-4. Paste into Claude, ChatGPT, Cursor, or another AI assistant **with your frontend repo context**.
-5. Apply generated changes; run the app and verify against the real API.
-6. When the backend gains new endpoints, update **Appendix A** and add new prompts in the same style.
-
-Use these prompts in order **1 → 2 → 3** first (foundation), then **4 / 5** by role, then **6** for clinical screens, **7** optional.
-
-**Maintainer rule:** Whenever the backend API, auth rules, or permissions change, update **Appendix A** and the **Changelog** at the bottom of this file in the same change.
+Use these prompts with Claude, ChatGPT, or other AI tools to implement your backend. Copy-paste each prompt as-is for the best results.
 
 ---
 
 ## ⚡ Quick Start
 
-### 1. Backend must be reachable
+### 1. Before anything, install and start PostgreSQL locally:
 
-- Start API: `uvicorn app.main:app --reload` (from backend repo, venv active).
-- Check: open `http://localhost:8000/health`.
+- Windows: Download from https://www.postgresql.org/download/windows/
+- macOS: `brew install postgresql && brew services start postgresql`
+- Linux: `sudo apt-get install postgresql`
 
-### 2. Frontend environment
+### 2. Create your backend folder:
 
-Add a base URL **without** a trailing slash, for example:
-
-```env
-# Vite
-VITE_API_BASE_URL=http://localhost:8000
-
-# Next.js
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+```powershell
+mkdir dicom-reader-backend
+cd dicom-reader-backend
 ```
 
-In code, use: `const API_ROOT = \`${baseUrl}/api/v1\``(avoid`//`).
+### 3. For EACH prompt below (1-19):
 
-### 3. CORS
+- Copy the entire prompt (the code block)
+- Paste into Claude or ChatGPT
+- Get the generated code
+- Save to the backend folder following the file paths listed
 
-Backend `.env` must list your SPA origin in `ALLOWED_ORIGINS` (comma-separated). If the browser shows CORS errors, fix origins first—do not disable CORS in production.
+### 4. After all prompts are done:
 
-### 4. For EACH prompt below
+- Follow BACKEND_LOCAL_SETUP.md for exact setup commands
+- Run `uvicorn app.main:app --reload`
+- Visit http://localhost:8000/docs
 
-- Copy the **whole** triple-backtick block under the prompt heading.
-- Paste into your AI tool; attach or paste **Appendix A** if the model cannot read this file.
-- Implement and test before moving to the next prompt.
+### ⚠️ Skip for now:
+
+- Prompt 20 (Celery - only if you need background tasks)
+- Prompt 21 (Docker - only when deploying to production)
 
 ---
 
 ## 📋 AI PROMPTS (Use These in Order)
 
----
+### PROJECT SETUP & INITIALIZATION
 
-## 🌐 API CLIENT & ERROR HANDLING
-
-### Prompt 1: API Client — Replace Mocks with Real Backend Calls
+### Prompt 1: Project Setup & Dependencies (Local PostgreSQL)
 
 ```
-Wire the existing SPA to the FastAPI DICOM viewer backend. The app currently uses mock data, fake delays, or hard-coded fetch URLs.
+Create a FastAPI project structure for a DICOM medical imaging viewer backend.
 
-**IMPORTANT:** Centralize HTTP logic. Do not leave scattered raw fetch() calls across components after this task.
+**IMPORTANT: This is for LOCAL development WITHOUT Docker.**
 
 Requirements:
-- Environment variable for API host (e.g. VITE_API_BASE_URL or NEXT_PUBLIC_API_BASE_URL), no trailing slash
-- Derived API root: {BASE}/api/v1
-- JSON request bodies use Content-Type: application/json
-- Attach Authorization: Bearer <access_token> when a token exists (token plumbing completed in Prompt 2; for Prompt 1 accept a getter/callback or placeholder injection)
-- Parse JSON on success; on error responses parse the backend envelope when present
+- Python 3.11+
+- FastAPI web framework
+- SQLAlchemy 2.0 for ORM
+- PostgreSQL database (running on localhost)
+- JWT authentication with PyJWT
+- Pydantic for data validation
+- pydicom for DICOM file processing
+- Pillow for image manipulation
+- NumPy for advanced image processing (MPR, HU calculations)
+- SciPy for scientific calculations
+- python-multipart for file uploads
+- python-jose for JWT tokens
+- passlib for password hashing
+- alembic for database migrations
+- uvicorn as ASGI server
+- Redis Python client redis (optional, for caching)
+- Celery (optional, for async tasks)
 
-Endpoints (no auth yet for login — use client for public health check only if useful):
-- GET http://localhost:8000/health — optional smoke test from the client
+Create:
+1. requirements.txt with all dependencies and versions (NO Docker packages)
+2. .env.example with configuration for LOCAL PostgreSQL:
+   - DATABASE_URL=postgresql://user:password@localhost:5432/dicom_db
+   - JWT_SECRET_KEY=your-secret-key
+   - JWT_ALGORITHM=HS256
+   - REDIS_URL=redis://localhost:6379 (optional)
+3. pyproject.toml with project metadata
+4. Alembic configuration for database migrations
+5. Folder structure: app/, app/api/, app/models/, app/schemas/, app/crud/, app/core/, app/services/
 
-Error handling (backend envelope):
-- Shape: { "error", "message", "details?", "request_id?" }
-- 422: details is often an array of validation objects (loc, msg, type)
-- 403: message may contain "Missing permission: resource.action"
-- 401: invalid or expired token
-- 429: login rate limit (handled in Prompt 2)
+NOTE: Do NOT include Dockerfile or docker-compose.yml. Those are optional later.
+
+Include instructions for:
+- Creating Python virtual environment: `python -m venv venv`
+- Activating: `.\\venv\\Scripts\\Activate.ps1` (Windows) or `source venv/bin/activate` (Unix)
+- Installing: `pip install -r requirements.txt`
+- Database setup: `alembic upgrade head`
+- Running: `uvicorn app.main:app --reload`
+```
+
+### Prompt 2: FastAPI Main Application
+
+```
+Create the main FastAPI application file for a DICOM viewer backend.
+
+Requirements:
+- Main entry point (app/main.py)
+- CORS middleware configured for http://localhost:3000 (frontend)
+- Database connection initialization
+- Exception handlers for custom errors
+- Logging configuration
+- API versioning setup (/api/v1/)
+- Health check endpoint
+- Startup/shutdown events for resource management
+
+Include:
+- Proper error handling middleware
+- Request/response logging
+- Security headers
+```
+
+### Prompt 3: Database Configuration & Models
+
+```
+Create database configuration and SQLAlchemy models for DICOM viewer.
+
+Database: PostgreSQL
+Create:
+1. app/database.py - Database connection using SQLAlchemy
+2. app/models/ folder with these Python models:
+   - user.py (User model with roles)
+   - patient.py (Patient medical records)
+   - study.py (DICOM Study - parent container)
+   - series.py (DICOM Series - image grouping)
+   - instance.py (DICOM Instance - individual image)
+   - measurement.py (Measurements: distance, angle, area, ROI, HU)
+   - annotation.py (User annotations on images)
+   - report.py (Radiologist reports)
+   - audit_log.py (Compliance audit trail)
+   - worklist_item.py (Work assignments)
+
+For each model:
+- Include all database column definitions
+- Add relationships between models
+- Include timestamps (created_at, updated_at)
+- Add appropriate indexes for performance
+- Include SQLAlchemy configurations
+
+Use proper column types, constraints, and validations.
+```
+
+---
+
+## 🔐 AUTHENTICATION & SECURITY
+
+### Prompt 4: JWT Authentication System
+
+```
+Create JWT-based authentication system for DICOM viewer backend.
+
+Requirements:
+- JWT token generation and validation
+- Password hashing with bcrypt
+- User login endpoint
+- Token refresh mechanism
+- User registration (admin only)
+- Logout functionality
+
+Create:
+1. app/core/security.py - Password hashing, JWT token creation/validation
+2. app/core/permissions.py - Role-based access control (RBAC)
+3. app/api/v1/auth.py - Authentication endpoints
+
+Features:
+- Access tokens (30 minute expiry)
+- Refresh tokens (7 day expiry)
+- Secure password requirements
+- Rate limiting on login attempts
+- JWT payload includes: user_id, username, role, permissions
+
+Endpoint:
+POST /api/v1/auth/login - Returns access_token, refresh_token, user info
+POST /api/v1/auth/refresh - Refresh expired token
+GET /api/v1/auth/me - Get current user info
+POST /api/v1/auth/logout - Invalidate token (optional)
+
+Use environment variables for JWT secrets and expiry times.
+```
+
+### Prompt 5: Role-Based Access Control
+
+```
+Create role-based access control (RBAC) middleware for 5 user roles.
+
+Roles and Permissions:
+1. admin - Full system access
+2. radiologist - View/analyze studies, create reports, manage measurements
+3. imaging_technician - Upload DICOM files, manage studies
+4. radiographer - Upload files, limited viewing
+5. service - API access for automated uploads
+
+Create:
+1. app/core/permissions.py - Permission matrix and decorators
+2. Authentication middleware that checks permissions
+3. Pydantic schemas for role-based responses
 
 Implement:
-1. apiClient.request(method, path, { body, authToken }) where path is relative to /api/v1 (e.g. "/auth/login")
-2. getApiErrorMessage(parsedBody, status) — prefer message, then first 422 detail, then fallback text
-3. Log request_id to console in development for support
-4. Replace existing mock modules / setTimeout fakes for endpoints that exist on the backend with calls through apiClient
-5. Thin service modules per domain (authService, userService) that call apiClient
+- Permission checking decorator @require_permission("study.read")
+- Role-based endpoint filtering
+- Audit logging of permission denials
+- Dynamic permission loading from database
 
-Features:
-- TypeScript types aligned with backend field names (camelCase vs snake_case: match API JSON — backend uses snake_case for many fields)
-- Single place to change base URL for staging/production
-
-NOTE: Full endpoint lists and JSON examples are in Appendix A of FRONTEND_AI_PROMPTS.md. Keep OpenAPI as the source of truth for routes not yet listed in the appendix.
-```
-
----
-
-## 🔐 AUTHENTICATION & SESSION
-
-### Prompt 2: Authentication — Login, Refresh, Logout, Me, Route Guards
-
-```
-Implement full authentication against the DICOM viewer backend JWT API.
-
-**IMPORTANT:** After login, store access_token, refresh_token, and user (including permissions) from the server response. Do not invent permissions client-side.
-
-Endpoints:
-POST /api/v1/auth/login — body: { "email", "password" } — returns access_token, refresh_token, token_type, user { id, email, full_name, role, permissions }
-POST /api/v1/auth/refresh — body: { "refresh_token" } — same response shape as login
-GET /api/v1/auth/me — Bearer access token — returns current user + permissions from database
-POST /api/v1/auth/logout — Bearer access token — revokes current access token (jti); clear client storage after success
-POST /api/v1/auth/register — Bearer admin only — optional UI for admin-created users; service accounts should use POST /users (Prompt 4)
-
-Requirements:
-- Normalize email on client: trim + lowercase (match backend validator)
-- Persist tokens so reload can restore session (product choice: memory + sessionStorage vs localStorage; prefer safer patterns if already in the project)
-- Attach Bearer access token to all protected requests (via apiClient from Prompt 1)
-- On 401 from an API call: attempt refresh once with refresh_token; if refresh succeeds, retry original request once; if refresh fails, clear session and redirect to login
-- Optional: proactive refresh when access token is near expiry (~30 min default server-side) or use decoded JWT exp if you decode for UX only
-- Route guards: unauthenticated users cannot access authenticated layouts
-- Login failures: show server message; 429 Too Many Requests for repeated failed logins same email
-- Disabled user: backend returns 403 on login with appropriate message
-
-Features:
-- Auth context/provider (or equivalent) exposing user, role, permissions, login, logout, isAuthenticated
-- Loading state during session bootstrap (me or token restore)
-
-NOTE: Authorization decisions on the server always win; client state is for UX only.
-```
-
----
-
-## 🛡️ RBAC & PERMISSION-GATED UI
-
-### Prompt 3: RBAC — Menus, Routes, and Buttons from Permissions
-
-```
-Drive navigation and primary actions from the backend permission list on the user object.
-
-**IMPORTANT:** Permissions use dot notation (e.g. study.read, dicom.upload). The JWT/login/me payload includes an expanded list (wildcards like *.* already resolved server-side for admin).
-
-Permission catalog (known backend strings — see Appendix A for full list):
+For each role, define access levels for:
 - patient.*, study.*, instance.*, measurement.*, report.*, audit_log.*, dicom.*
 
-Role strings (exact):
-- admin, service, radiologist, imaging_technician, radiographer
-
-UI rules:
-- can(permission: string): true if user.permissions includes that exact string
-- canAny([...permissions]): true if any match
-- Hide or disable nav items based on can(); hide nav for missing access; use empty states for 403 from API
-- User management screens (full /users CRUD): visible if role is admin OR service (backend parity)
-- POST /auth/register UI: admin role only (not service)
-- RBAC matrix page (Prompt 7): admin only
-
-Implement:
-1. Permission helper module + hook/usePermissions
-2. Map each major route to required permission(s) or role
-3. Forbidden route handler: redirect or dedicated “Not allowed” view
-4. When API returns 403 with "Missing permission: ...", show a clear message
-
-Features:
-- No duplicate of full server matrix hard-coded; trust me/refresh permissions
-- Direct URL entry to forbidden page does not crash; shows guard outcome
-
-NOTE: Backend may audit permission denials; avoid spamming forbidden endpoints in loops.
+Return 403 Forbidden for unauthorized access.
 ```
 
 ---
 
 ## 👥 USER MANAGEMENT
 
-### Prompt 4: User Management UI — Admin and Service Roles
+### Prompt 6: User Management Endpoints
 
 ```
-Build or wire the Users admin section to the real REST API. Replace mock user tables and forms.
-
-**IMPORTANT:** Roles admin and service have identical access to ALL /api/v1/users routes. Use POST /api/v1/users for provisioning (not /auth/register) when the actor is a service account.
+Create user management API endpoints for administrator use.
 
 Endpoints:
-GET /api/v1/users?page=&page_size= — list (page default 1, page_size default 20, max 100)
-POST /api/v1/users — create user
-GET /api/v1/users/{id} — detail
-PUT /api/v1/users/{id} — update (privileged: email, full_name, is_active, is_verified, role)
-DELETE /api/v1/users/{id} — delete (cannot delete own account — backend 400)
-PUT /api/v1/users/{id}/role — body { "role" }
-PUT /api/v1/users/{id}/password — privileged reset others: { "new_password" } only; see Prompt 5 for self
+GET /api/v1/users - List all users (admin only)
+POST /api/v1/users - Create new user (admin only)
+GET /api/v1/users/{id} - Get user details
+PUT /api/v1/users/{id} - Update user (admin or self)
+DELETE /api/v1/users/{id} - Delete user (admin only)
+PUT /api/v1/users/{id}/role - Change user role (admin only)
+PUT /api/v1/users/{id}/password - Change password
 
-Schemas (see Appendix A):
-- UserCreate, UserUpdate, UserResponse, UserListResponse, ChangePasswordRequest, ChangeUserRoleRequest
-
-Requirements:
-- Pagination UI bound to total, page, page_size from UserListResponse
-- Create/Edit forms with validation
-- Password rules (create + reset): minimum 8 characters, uppercase, lowercase, digit, special character — show hints; surface backend 400 message if validation fails
-- 409 conflict when email already exists — inline error
-- Disable delete for current user’s id
+Create Pydantic schemas:
+- UserCreate
+- UserUpdate
+- UserResponse (without password hash)
+- ChangePasswordRequest
 
 Features:
-- Loading and error states
-- Optional dedicated “Change role” and “Reset password” actions using dedicated endpoints
+- Password validation (minimum 8 chars, complexity)
+- Email uniqueness check
+- User status (active/inactive)
+- Created/updated timestamps
+- Proper error responses
 
-Implement:
-1. userService methods for each endpoint
-2. Users list page + create/edit modal or routes
-3. Role select with enum: admin, radiologist, imaging_technician, radiographer, service
-
-NOTE: Self-service profile (non-privileged) is Prompt 5 — keep admin forms separate to avoid sending forbidden fields.
+Use SQLAlchemy CRUD operations.
 ```
 
 ---
 
-## 👤 PROFILE & SELF-SERVICE
+## 🏥 PATIENT MANAGEMENT
 
-### Prompt 5: Profile and Self-Service
+### Prompt 7: Patient Management Endpoints
 
 ```
-Implement self-service profile management for the authenticated user.
+Create patient management API endpoints for medical records.
 
 Endpoints:
-GET /api/v1/profile — Returns current user's profile
-PUT /api/v1/profile — Update self (email, full_name only)
-POST /api/v1/profile/change-password — Update own password: { "old_password", "new_password" }
+GET /api/v1/patients - List patients with pagination and filters
+POST /api/v1/patients - Create new patient
+GET /api/v1/patients/{id} - Get patient details
+PUT /api/v1/patients/{id} - Update patient information
+DELETE /api/v1/patients/{id} - Delete patient (admin only, if no studies)
+GET /api/v1/patients/search?q={text} - Search patients by name/ID/email
 
-Requirements:
-- Profile page showing full_name, email, role (read-only), and active status
-- Update form for full_name and email
-- Password change form with old_password validation and new_password complexity check
-- Inline success/error feedback
-
-Features:
-- Toast notifications on successful update
-- Refetch user/me context after profile change to keep UI synchronized
-```
-
-### Prompt 6: Patient Management — CRUD and Search
-
-```
-Connect the patient management screens to the live backend.
-
-Endpoints:
-GET /api/v1/patients — List with pagination and filters (gender, status, min_age, max_age)
-POST /api/v1/patients — Create patient (PatientCreate)
-GET /api/v1/patients/{id} — Detailed patient info including study_count
-PUT /api/v1/patients/{id} — Update patient (PatientUpdate)
-DELETE /api/v1/patients/{id} — Soft delete (Admin only, only if study_count is 0)
-GET /api/v1/patients/search?q={text} — Search by name, ID, or email
-
-Requirements:
-- Pagination UI (limit/offset)
-- Advanced filtering sidebar (gender, age range)
-- Real-time search or search-on-enter for patient discovery
-- Display calculated 'age' from the response
-- MRN and Patient ID uniqueness error handling (409 Conflict)
+Create Pydantic schemas:
+- PatientCreate
+- PatientUpdate
+- PatientResponse
+- PatientDetailResponse (includes study count)
 
 Features:
-- Patient detail view showing associated study list (Prompt 7)
-- Loading skeletons for patient list
-```
+- Pagination (limit, offset)
+- Filtering by gender, age range, status
+- Search functionality
+- Validate date of birth format
+- Calculate age from DOB
+- Track creation date and user who created
+- Soft delete capability
 
-### Prompt 7: Study Browser — List, Series, and Instances
-
-```
-Implement the clinical study browser to navigate DICOM hierarchy.
-
-Endpoints:
-GET /api/v1/studies — List with filters (modality, status, patient_id)
-GET /api/v1/studies/{id} — Study details and statistics
-GET /api/v1/studies/{id}/series — List series in study
-GET /api/v1/studies/{id}/instances — List all instances in study
-GET /api/v1/studies/{id}/audit — View study-specific audit history (audit_log.read permission)
-DELETE /api/v1/studies/{id} — Archive study (Admin only)
-
-Requirements:
-- Study list with modality icons and status badges (new, ongoing, completed, archived)
-- Deep navigation: Study -> Series -> Instance
-- Display statistics: Total series, total images, and storage size
-- Archive action for admins with confirmation
-
-Features:
-- Filter studies by modality (CT, MRI, XR, etc.) and date range
-- Audit log modal/tab for clinical compliance tracking
-```
-
-### Prompt 8: DICOM Viewer — Rendering and Image Manipulation
-
-```
-Implement the image viewer using the backend's on-the-fly rendering service.
-
-Endpoints:
-GET /api/v1/instances/{id}/image — Main rendering route
-GET /api/v1/instances/{id}/info — DICOM tag list (clinical info)
-GET /api/v1/instances/{id}/dicom — Download original file
-
-Render Parameters (Query String):
-- format: png | jpeg | webp
-- preset: lung | bone | brain | mediastinum
-- window_center, window_width: custom HU values
-- zoom: 1.0 to 4.0
-- rotate: 0, 90, 180, 270
-- flip_horizontal, flip_vertical: boolean
-- filter: none, sharpen, smooth, edge_detect
-
-Requirements:
-- Viewer component that constructs rendering URLs dynamically based on UI controls
-- Presets selector for quick windowing (Lung, Bone, etc.)
-- Interactive controls for zoom, rotation, and flipping
-- Display DICOM tags in a side panel or modal
-- Implement ETag-based caching for rendered images
-
-Features:
-- Smooth loading transitions between images
-- Download action for the original .dcm file
-```
-
-### Prompt 9: DICOM Upload — Async Upload and Progress
-
-```
-Implement the DICOM ingestion flow with real-time progress tracking.
-
-Endpoints:
-POST /api/v1/dicom/upload — Multipart upload (multiple files + form data)
-GET /api/v1/dicom/upload-status/{upload_id}?task_id={task_id} — Progress tracking
-POST /api/v1/dicom/validate — Quick file validation
-
-Requirements:
-- Multi-file dropzone for DICOM (.dcm) files
-- Form for optional metadata (Patient ID, Study Description, etc.)
-- Progress bar driven by the upload-status endpoint (polling)
-- Handle "processing", "completed", and "failed" states
-- Display processing results: files processed vs. failed
-
-Features:
-- Drag-and-drop support
-- Validation feedback before starting large uploads
-```
-
-### Prompt 10: Audit Logs — Compliance Dashboard
-
-```
-Add an audit trail dashboard for administrators to monitor system activity.
-
-Endpoints:
-GET /api/v1/audit-logs — List with pagination and filters (user_id, action, entity_type)
-GET /api/v1/audit-logs/{id} — Detailed log entry
-
-Requirements:
-- Paginated table of system events
-- Filter by action (e.g., LOGIN, CREATE_STUDY, DELETE_PATIENT)
-- Search by User ID or Entity Type
-- Display metadata JSON in a readable format (e.g., code block or key-value list)
-
-Features:
-- Color-coded action types for better scannability
-- Link to user profile or entity where applicable
-```
-
-### Prompt 11: RBAC Matrix Viewer (Optional)
-
-```
-Add a read-only admin page that displays the role → permission matrix from the database.
-
-Endpoint:
-GET /api/v1/auth/rbac/matrix — Bearer token, admin role only
-
-Response (summary):
-- roles: list of { role, permissions[], description?, created_at, updated_at }
-- permission_catalog: sorted list of all known permission strings
-
-Requirements:
-- Hide route unless user.role === 'admin'
-- Table or cards per role; show permissions as sorted tags or list
-- Handle 403 if non-admin calls by mistake
-
-Features:
-- Search/filter within the page for role or permission string
-- Friendly empty/error state
-
-NOTE: Editing policies in UI may require future backend endpoints; this prompt is display-only.
+Medical record validation:
+- MRN uniqueness
+- Email format validation
+- Contact info validation
 ```
 
 ---
 
-## 📎 Appendix A — API contract reference
+## 📚 STUDY/SERIES/INSTANCE MANAGEMENT
 
-Use this section when an AI cannot read the repo. **Keep it synchronized** with the real backend.
+### Prompt 8: DICOM Study Endpoints
 
-### Quick facts
+```
+Create DICOM Study management endpoints.
 
-| Item            | Value                                  |
-| --------------- | -------------------------------------- |
-| API base path   | `/api/v1`                              |
-| Auth            | `Authorization: Bearer <access_token>` |
-| Typical dev URL | `http://localhost:8000`                |
-| OpenAPI         | `/openapi.json`                        |
-| Health          | `GET /health`, `GET /ready`            |
+Studies are the top-level container in DICOM hierarchy.
 
-### JWT lifetimes (defaults)
+Endpoints:
+GET /api/v1/studies - List studies with filters
+POST /api/v1/studies - Create new study (imaging tech only)
+GET /api/v1/studies/{id} - Get study details with metadata
+PUT /api/v1/studies/{id} - Update study status/info
+GET /api/v1/studies/{id}/series - List series in study
+GET /api/v1/studies/{id}/instances - List all instances in study
+GET /api/v1/studies/{id}/audit - Get study audit history
+DELETE /api/v1/studies/{id} - Archive study (admin only)
 
-- Access: 30 minutes
-- Refresh: 7 days
+Create Pydantic schemas:
+- StudyCreate
+- StudyUpdate
+- StudyResponse
+- StudyDetailResponse (with statistics)
 
-### User roles (exact strings)
+Features:
+- Filter by: date range, modality, patient, status
+- Pagination
+- Statistics (total series, total images, total storage)
+- Status tracking: new, ongoing, completed, archived
+- Study UID (DICOM uid) must be unique
+- Track referring physician
+- Accession number tracking
 
-| Role                 | Notes                                                                               |
-| -------------------- | ----------------------------------------------------------------------------------- |
-| `admin`              | Full access; RBAC matrix; `/auth/register`                                          |
-| `service`            | Same as admin for **all** `/api/v1/users/*`; use `POST /users` not `/auth/register` |
-| `radiologist`        | Clinical read/write per DB policy                                                   |
-| `imaging_technician` | Strong imaging/study/DICOM write per policy                                         |
-| `radiographer`       | Narrower read + upload per policy                                                   |
-
-### Permission catalog (dot notation)
-
-`patient.read`, `patient.write`, `patient.delete`, `study.read`, `study.write`, `study.delete`, `instance.read`, `instance.write`, `instance.delete`, `measurement.read`, `measurement.write`, `measurement.delete`, `report.read`, `report.write`, `report.delete`, `audit_log.read`, `audit_log.write`, `dicom.read`, `dicom.write`, `dicom.upload`, `dicom.delete`
-
-### Error envelope
-
-```json
-{
-  "error": "HTTP_ERROR | VALIDATION_ERROR | INTERNAL_SERVER_ERROR",
-  "message": "Human-readable message",
-  "details": {},
-  "request_id": "uuid-or-null"
-}
+Include:
+- DICOM Study UID management
+- Series and instance counters
+- Creation user tracking
 ```
 
-### Password rules
+### Prompt 9: DICOM Instance/Image Endpoints
 
-Min 8 characters; at least one uppercase, lowercase, digit, special character.
-
-### Authentication endpoints
-
-| Method | Path                  | Auth               | Description                                 |
-| ------ | --------------------- | ------------------ | ------------------------------------------- |
-| POST   | `/auth/login`         | No                 | access + refresh + user                     |
-| POST   | `/auth/register`      | Admin              | Create user                                 |
-| POST   | `/auth/refresh`       | Body refresh_token | New tokens + user                           |
-| POST   | `/auth/refresh-token` | Body               | Alias of refresh (may be hidden in OpenAPI) |
-| GET    | `/auth/me`            | Bearer             | Current user + permissions                  |
-| POST   | `/auth/logout`        | Bearer             | Revoke access jti                           |
-| GET    | `/auth/rbac/matrix`   | Admin              | Matrix + catalog                            |
-
-**Login response (TypeScript shape):**
-
-```ts
-{
-  access_token: string;
-  refresh_token: string;
-  token_type: "bearer";
-  user: {
-    id: number;
-    email: string;
-    full_name: string;
-    role: string;
-    permissions: string[];
-  };
-}
 ```
+Create DICOM Instance (individual image) endpoints.
 
-### Profile endpoints
+Instances are individual DICOM images within a series.
 
-| Method | Path                       | Auth   | Description            |
-| ------ | -------------------------- | ------ | ---------------------- |
-| GET    | `/profile`                 | Bearer | Get self profile       |
-| PUT    | `/profile`                 | Bearer | Update email/full_name |
-| POST   | `/profile/change-password` | Bearer | Change own password    |
+Endpoints:
+GET /api/v1/instances/{id} - Get image metadata
+GET /api/v1/instances/{id}/image - Get rendered image (PNG/JPEG)
+GET /api/v1/instances/{id}/dicom - Download original DICOM file
+POST /api/v1/instances/{id}/render - Custom rendering request
+GET /api/v1/instances/{id}/info - Get DICOM tags
 
-### Patients endpoints
+Render Parameters (query string):
+- width, height (resolution)
+- window_center, window_width (HU windowing)
+- preset (lung, bone, brain, mediastinum)
+- flip_horizontal, flip_vertical (boolean)
+- rotate (0, 90, 180, 270)
+- zoom (1.0 to 4.0)
+- pan_x, pan_y (pixel offsets)
+- filter (none, sharpen, smooth, edge_detect)
+- format (png, jpeg, webp)
 
-| Method | Path               | Auth   | Description          |
-| ------ | ------------------ | ------ | -------------------- |
-| GET    | `/patients`        | Bearer | List + filters       |
-| POST   | `/patients`        | Bearer | Create patient       |
-| GET    | `/patients/{id}`   | Bearer | Detail + study_count |
-| PUT    | `/patients/{id}`   | Bearer | Update info          |
-| DELETE | `/patients/{id}`   | Admin  | Soft delete          |
-| GET    | `/patients/search` | Bearer | Search query `q`     |
+Create Pydantic schemas:
+- InstanceResponse
+- InstanceDetailResponse
+- RenderOptions
+- WindowingPreset
 
-### Studies endpoints
+Return:
+- PNG/JPEG image with applied windowing/transformations
+- Proper cache headers for browser caching
+- ETag for cache validation
 
-| Method | Path                      | Auth   | Description                |
-| ------ | ------------------------- | ------ | -------------------------- |
-| GET    | `/studies`                | Bearer | List + filters             |
-| POST   | `/studies`                | Bearer | Create (Tech/Radiographer) |
-| GET    | `/studies/{id}`           | Bearer | Detail + stats             |
-| PUT    | `/studies/{id}`           | Bearer | Update status/info         |
-| GET    | `/studies/{id}/series`    | Bearer | List series                |
-| GET    | `/studies/{id}/instances` | Bearer | List all instances         |
-| GET    | `/studies/{id}/audit`     | Bearer | Study audit trail          |
-| DELETE | `/studies/{id}`           | Admin  | Archive study              |
-
-### Instances endpoints
-
-| Method | Path                     | Auth   | Description           |
-| ------ | ------------------------ | ------ | --------------------- |
-| GET    | `/instances/{id}`        | Bearer | Metadata              |
-| GET    | `/instances/{id}/image`  | Bearer | **Rendered image**    |
-| GET    | `/instances/{id}/info`   | Bearer | DICOM tags            |
-| GET    | `/instances/{id}/dicom`  | Bearer | Download .dcm         |
-| POST   | `/instances/{id}/render` | Bearer | Custom render request |
-
-### DICOM Upload endpoints
-
-| Method | Path                        | Auth   | Description           |
-| ------ | --------------------------- | ------ | --------------------- |
-| POST   | `/dicom/upload`             | Bearer | Multipart ingestion   |
-| GET    | `/dicom/upload-status/{id}` | Bearer | Progress (task-based) |
-| POST   | `/dicom/validate`           | Bearer | File validation       |
-
-### Audit Log endpoints
-
-| Method | Path               | Auth  | Description    |
-| ------ | ------------------ | ----- | -------------- |
-| GET    | `/audit-logs`      | Admin | List + filters |
-| GET    | `/audit-logs/{id}` | Admin | Detailed event |
-
-### Users endpoints
-
-Privileged = role `admin` OR `service` (same rights on all routes below).
-
-| Method | Path                   | Who                                                     | Notes                        |
-| ------ | ---------------------- | ------------------------------------------------------- | ---------------------------- |
-| GET    | `/users`               | Privileged                                              | `page`, `page_size`          |
-| POST   | `/users`               | Privileged                                              | UserCreate                   |
-| GET    | `/users/{id}`          | Privileged or self                                      |                              |
-| PUT    | `/users/{id}`          | Privileged (all fields) or self (email, full_name only) |                              |
-| DELETE | `/users/{id}`          | Privileged                                              | No self-delete               |
-| PUT    | `/users/{id}/role`     | Privileged                                              | `{ role }`                   |
-| PUT    | `/users/{id}/password` | See Prompt 5                                            | Complexity on `new_password` |
-
-**UserCreate (JSON):**
-
-```json
-{
-  "email": "string",
-  "full_name": "string",
-  "password": "string",
-  "role": "radiographer",
-  "is_active": true,
-  "is_verified": true
-}
+Store:
+- Multiple presets (lung, bone, brain, mediastinum)
+- Default windowing values from DICOM tags
 ```
-
-**UserUpdate (JSON)** — all optional:
-
-```json
-{
-  "email": "string",
-  "full_name": "string",
-  "is_active": true,
-  "is_verified": true,
-  "role": "radiologist"
-}
-```
-
-**UserResponse:** `id`, `email`, `full_name`, `role`, `is_active`, `is_verified`, `created_at`, `updated_at`
-
-**UserListResponse:** `total`, `page`, `page_size`, `items: UserResponse[]`
-
-**ChangePasswordRequest:** `new_password`, `old_password` optional
-
-**ChangeUserRoleRequest:** `{ "role": "imaging_technician" }`
 
 ---
 
-## Changelog
+## 📤 DICOM FILE UPLOAD & PROCESSING
 
-| Date       | Notes                                                                                                                                                                                                                     |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-04-08 | Initial API contract and prompts F1–F7.                                                                                                                                                                                   |
-| 2026-04-08 | Restructured to match BACKEND_AI_PROMPTS.md style: Important/Prerequisites/Quick Start, emoji sections, Prompts 1–7 in copy-paste code blocks (Requirements/Endpoints/Features/Implement/NOTE), Appendix A for reference. |
+### Prompt 10: DICOM Upload Endpoints
+
+```
+Create DICOM file upload endpoints with async processing.
+
+Endpoints:
+POST /api/v1/dicom/upload - Upload DICOM files (multipart/form-data)
+GET /api/v1/dicom/upload-status/{upload_id} - Get upload progress
+POST /api/v1/dicom/validate - Validate DICOM files
+
+Upload Form Parameters:
+- files: Binary file upload (multiple files)
+- patient_id: Target patient ID
+- study_description: (optional)
+- referringPhysician: (optional)
+- study_date: (optional, format YYYY-MM-DD)
+- modality: (optional, CT/MRI/XR/US)
+
+Response (202 Accepted):
+{
+  "upload_id": "up_123456",
+  "status": "processing",
+  "files_received": 45,
+  "files_processed": 0,
+  "files_failed": 0,
+  "task_id": "celery_task_id"
+}
+
+Upload Processing:
+1. Validate file format (DICOM magic numbers)
+2. Extract DICOM metadata
+3. Group by Study/Series UID
+4. Create Study/Series/Instance records
+5. Convert to PNG/JPEG for web viewing
+6. Extract windowing presets
+7. Calculate image statistics
+8. Index for search
+
+Use Celery for async processing.
+Store original DICOM files in S3 or local storage.
+Track upload progress and errors.
+```
+
+### Prompt 11: DICOM Processing Service
+
+```
+Create the core DICOM processing service.
+
+Create file: app/services/dicom_processor.py
+
+Functions:
+1. validate_dicom(file_path) -> bool
+   - Check DICOM magic number
+   - Parse DICOM header
+   - Validate required tags
+
+2. parse_dicom_metadata(file_path) -> dict
+   - Extract Study UID, Series UID, Instance UID
+   - Extract patient info (name, age, sex)
+   - Extract image info (rows, columns, bits allocated)
+   - Extract windowing (window center, window width)
+   - Extract modality
+   - Return complete metadata dict
+
+3. extract_pixel_array(dicom_file) -> numpy.ndarray
+   - Convert DICOM pixel data to numpy array
+   - Handle multi-frame images
+   - Handle compressed data
+   - Normalize to 0-255 range
+
+4. convert_to_image(pixel_array, window_center, window_width) -> Image
+   - Apply windowing (HU conversion for CT)
+   - Convert to PIL Image
+   - Return PIL Image object
+
+5. save_rendered_image(image, instance_id, output_path) -> str
+   - Save as PNG at 512x512
+   - Save thumbnail at 128x128
+   - Return file paths
+
+6. group_by_study_series(dicom_files) -> dict
+   - Group uploaded DICOM files by Study UID, then Series UID
+   - Return hierarchical structure
+
+Use pydicom, numpy, PIL (Pillow), SimpleITK as needed.
+Include error handling and logging.
+```
+
+### Prompt 12: Image Rendering Service
+
+```
+Create image rendering service for DICOM images.
+
+Create file: app/services/image_renderer.py
+
+Functions:
+1. apply_windowing(pixel_array, window_center, window_width) -> numpy.ndarray
+   - Apply HU windowing for CT images
+   - Result: values between 0-255
+
+2. apply_preset_windowing(pixel_array, modality, preset) -> numpy.ndarray
+   - Presets: lung, bone, brain, mediastinum, abdomen
+   - Return windowed array
+
+3. apply_transformations(image, options) -> PIL.Image
+   - Flip horizontal/vertical
+   - Rotate (0, 90, 180, 270)
+   - Zoom (1.0-4.0)
+   - Pan (apply offset)
+
+4. apply_filter(image, filter_type) -> PIL.Image
+   - none, sharpen, smooth, edge_detect
+   - Use PIL ImageFilter
+
+5. render_instance(instance_id, options: RenderOptions) -> PIL.Image
+   - Load original DICOM
+   - Apply windowing
+   - Apply transformations
+   - Apply filters
+   - Resize to requested dimensions
+   - Return PIL Image
+
+6. get_image_bytes(image, format, quality) -> bytes
+   - Convert PIL Image to bytes
+   - Format: PNG, JPEG, WebP
+   - Quality: 1-100 (for lossy formats)
+
+7. cache_key(instance_id, options) -> str
+   - Generate cache key for Redis
+   - Include all render options
+
+Windowing Presets:
+- CT Lung: center=-600, width=1600
+- CT Bone: center=400, width=1800
+- CT Brain: center=40, width=400
+- CT Mediastinum: center=50, width=400
+- CT Abdomen: center=40, width=400
+```
 
 ---
 
-_End of file — update Appendix A and Changelog when the backend changes._
+## 📐 MEASUREMENTS
+
+### Prompt 13: Measurements Endpoints
+
+```
+Create measurement API endpoints for measurement tools.
+
+Measurements: distance, angle, area, ROI (region), HU (Hounsfield Units)
+
+Endpoints:
+GET /api/v1/measurements - List measurements with filters
+POST /api/v1/measurements - Create new measurement
+GET /api/v1/measurements/{id} - Get measurement details
+PUT /api/v1/measurements/{id} - Update measurement
+DELETE /api/v1/measurements/{id} - Delete measurement
+GET /api/v1/measurements/instance/{instance_id} - Get instance measurements
+GET /api/v1/measurements/study/{study_id} - Get study measurements
+
+Create Pydantic schemas:
+- MeasurementCreate
+- MeasurementUpdate
+- MeasurementResponse
+- MeasurementDetailResponse
+
+Fields:
+- id (UUID)
+- instance_id
+- type (distance, angle, area, roi, hu)
+- value (numeric result)
+- unit (mm, degrees, mm², HU)
+- label (user-provided name)
+- coordinates (JSON array of points)
+- metadata (JSON for additional data like ROI statistics)
+- created_by_id (user)
+- created_at, updated_at
+
+Features:
+- Filter by type, user, instance, study
+- Pagination
+- User can only see own measurements (except radiologists can see all under their studies)
+- Audit logging for all operations
+
+### Prompt 14: PACS Query Endpoints
+
+```
+
+Create PACS query and retrieval API endpoints.
+
+Endpoints:
+POST /api/v1/pacs/query - Query PACS for studies
+Request: {
+host: string,
+port: number,
+aeTitle: string,
+patientId?: string,
+patientName?: string,
+studyUID?: string
+}
+Response: Array of study metadata
+
+POST /api/v1/pacs/retrieve - Retrieve study from PACS
+Request: {
+host: string,
+port: number,
+aeTitle: string,
+studyUID: string,
+destinationPath?: string
+}
+Response: { status: string, filesRetrieved: number, taskId: string }
+
+GET /api/v1/pacs/connections - List saved PACS connections
+POST /api/v1/pacs/connections - Save PACS connection config
+PUT /api/v1/pacs/connections/{id} - Update connection
+DELETE /api/v1/pacs/connections/{id} - Delete connection
+
+Create Pydantic schemas:
+
+- PACSConnection
+- PACSQueryRequest
+- PACSRetrieveRequest
+- StudyMetadata (from PACS response)
+
+Features:
+
+- Async processing for large study retrievals
+- Progress tracking with Celery
+- Connection validation before queries
+- Error handling for PACS communication failures
+- Support for multiple PACS systems
+- Secure storage of PACS credentials (encrypted)
+
+### Prompt 15: Advanced Visualization Endpoints
+
+```
+Create advanced visualization API endpoints for 3D, MPR, and HU analysis.
+
+Endpoints:
+GET /api/v1/visualization/study/{study_id}/volume - Get volume data for 3D rendering
+  Query params: format (json|binary), compression (none|gzip)
+  Response: Volume data array or binary blob
+
+GET /api/v1/visualization/study/{study_id}/mpr - Get MPR reconstruction data
+  Query params: plane (axial|sagittal|coronal), slice_index, thickness
+  Response: 2D image data for specified plane
+
+GET /api/v1/visualization/instance/{instance_id}/hu - Get HU analysis data
+  Query params: roi_x, roi_y, roi_width, roi_height
+  Response: { mean: number, std: number, min: number, max: number, histogram: [] }
+
+POST /api/v1/visualization/study/{study_id}/fusion - Create image fusion
+  Request: { base_instance_id, overlay_instance_id, opacity, blend_mode }
+  Response: Fused image data
+
+GET /api/v1/visualization/presets - Get windowing presets
+  Response: Array of { name, window_center, window_width, modality }
+
+Create Pydantic schemas:
+- VolumeData
+- MPRData
+- HUAnalysis
+- FusionRequest
+- WindowPreset
+
+Features:
+- Volume reconstruction from DICOM series
+- Multi-planar reconstruction (MPR)
+- Hounsfield Unit calculations and ROI statistics
+- Image fusion capabilities
+- Windowing presets for different modalities
+- Caching for expensive computations
+- Support for large datasets (streaming responses)
+
+Use NumPy for 3D volume operations, SciPy for interpolation.
+Return data in format compatible with Three.js and Canvas rendering.
+```
+
+---
+
+```
+
+### Prompt 14: Measurement Calculation Engine
+
+```
+
+Create measurement calculation engine.
+
+Create file: app/services/measurement_engine.py
+
+Functions:
+
+1. calculate_distance(point1, point2, mm_per_pixel) -> float
+   - point1, point2 format: {"x": int, "y": int}
+   - mm_per_pixel: calibration from DICOM pixel spacing
+   - Return distance in mm
+
+2. calculate_angle(point1, point2, point3, mm_per_pixel) -> float
+   - Angle at point2 formed by point1-point2-point3
+   - Return angle in degrees (0-180)
+
+3. calculate_area(points: list, mm_per_pixel) -> float
+   - Polygon area from list of points
+   - Use Shoelace formula
+   - Return area in mm²
+
+4. calculate_roi_statistics(pixel_array, roi_points, modality) -> dict
+   - ROI = Region of Interest (polygon)
+   - Calculate: mean HU, std dev, min, max, area
+   - For each point in roi_points, get pixel value
+   - Return statistics dict
+
+5. calculate_hu_values(pixel_array, intercept, slope) -> dict
+   - Convert pixel values to Hounsfield Units
+   - HU = pixel_value \* slope + intercept
+   - Return HU statistics
+
+6. get_pixel_spacing(dicom_file) -> (float, float)
+   - Extract pixel spacing from DICOM tags
+   - Return (row_spacing, column_spacing) in mm
+
+Response format:
+{
+"distance": 45.5, // mm
+"angle": 90.0, // degrees
+"area": 1234.5, // mm²
+"roi_statistics": {
+"mean_hu": 50,
+"std_dev": 15,
+"min_hu": 20,
+"max_hu": 85,
+"area": 500
+}
+}
+
+```
+
+---
+
+## 💬 ANNOTATIONS
+
+### Prompt 15: Annotations Endpoints
+
+```
+
+Create annotation API endpoints.
+
+Annotations: User-drawn text/drawings on images.
+
+Endpoints:
+GET /api/v1/annotations - List annotations
+POST /api/v1/annotations - Create annotation
+GET /api/v1/annotations/{id} - Get annotation
+PUT /api/v1/annotations/{id} - Update annotation
+DELETE /api/v1/annotations/{id} - Delete annotation
+GET /api/v1/annotations/instance/{instance_id} - Get instance annotations
+GET /api/v1/annotations/study/{study_id} - Get study annotations
+
+Create Pydantic schemas:
+
+- AnnotationCreate
+- AnnotationUpdate
+- AnnotationResponse
+
+Fields:
+
+- id (UUID)
+- instance_id
+- user_id (creator)
+- text (annotation text)
+- x, y (pixel coordinates)
+- color (hex color code, e.g., "#FF0000")
+- drawing_points (optional, list of points for freehand drawing)
+- created_at, updated_at
+
+Features:
+
+- Pixel-coordinate based positioning
+- Color selection by user
+- User can edit own annotations
+- Admin/radiologist can delete any annotation
+- Audit logging
+- Pagination
+
+Return format:
+[
+{
+"id": "ann_123",
+"instance_id": "inst_456",
+"text": "Suspicious nodule",
+"x": 250,
+"y": 180,
+"color": "#FF0000",
+"created_by": "Dr. John Smith",
+"created_at": "2026-03-21T10:30:00Z"
+}
+]
+
+```
+
+---
+
+## 📋 REPORTS
+
+### Prompt 16: Report Management Endpoints
+
+```
+
+Create report generation and management endpoints.
+
+Reports are radiologist findings and impressions for studies.
+
+Endpoints:
+GET /api/v1/reports - List reports with filters
+POST /api/v1/reports - Create new report
+GET /api/v1/reports/{id} - Get report details
+PUT /api/v1/reports/{id} - Update report (draft only)
+DELETE /api/v1/reports/{id} - Delete report (draft only)
+POST /api/v1/reports/{id}/approve - Approve report (senior radiologist)
+POST /api/v1/reports/{id}/sign - Sign/finalize report
+GET /api/v1/reports/study/{study_id} - Get study reports
+
+Create Pydantic schemas:
+
+- ReportCreate
+- ReportUpdate
+- ReportResponse
+- ReportApprovalRequest
+
+Fields:
+
+- id (UUID)
+- study_id
+- patient_id
+- radiologist_id (creator)
+- findings (text)
+- impression (text)
+- recommendations (text, optional)
+- status (draft, completed, signed, approved)
+- created_at, updated_at
+- signed_by_id (radiologist who signed)
+- signed_at (timestamp)
+
+Status Workflow:
+
+1. Radiologist creates report in 'draft' status
+2. Radiologist updates findings/impression (draft)
+3. Radiologist marks 'completed' (final draft)
+4. Senior radiologist 'approves' it
+5. Radiologist 'signs' it (final status)
+
+Features:
+
+- Only creator can edit draft reports
+- Only radiologists can create reports
+- Only senior radiologists can approve
+- Cannot delete signed reports
+- Audit logging all changes
+- Track who signed and when
+
+```
+
+---
+
+## 🔍 AUDIT LOGGING
+
+### Prompt 17: Audit Logging Endpoints
+
+```
+
+Create comprehensive audit logging for compliance.
+
+Endpoints:
+GET /api/v1/audit-logs - List audit logs (admin only)
+GET /api/v1/audit-logs/user/{user_id} - User audit logs
+GET /api/v1/audit-logs/study/{study_id} - Study audit logs
+GET /api/v1/audit-logs/export?format=csv&start_date=...&end_date=... - Export logs
+GET /api/v1/audit-logs/dashboard - Audit summary statistics
+
+Create Pydantic schemas:
+
+- AuditLogCreate
+- AuditLogResponse
+- AuditLogFilterRequest
+- AuditLogExport
+
+Fields:
+
+- id (BIGINT auto-increment)
+- user_id
+- user_role
+- action (event type)
+- resource_type (study, measurement, annotation, report, patient, user)
+- resource_id
+- study_id (nullable, for study context)
+- details (JSON, additional context)
+- severity (info, warning, critical)
+- ip_address
+- user_agent
+- created_at
+
+Event Types (actions) to log:
+STUDY_VIEWED, STUDY_CREATED, STUDY_UPDATED, STUDY_DELETED
+MEASUREMENT_CREATED, MEASUREMENT_UPDATED, MEASUREMENT_DELETED
+ANNOTATION_CREATED, ANNOTATION_UPDATED, ANNOTATION_DELETED
+REPORT_CREATED, REPORT_UPDATED, REPORT_APPROVED, REPORT_SIGNED
+USER_LOGIN, USER_LOGOUT, USER_CREATED, USER_UPDATED, USER_DELETED
+DICOM_UPLOADED, DICOM_PROCESSED
+PERMISSION_DENIED (severity: warning)
+DATA_EXPORT
+
+Features:
+
+- Automatically log all CRUD operations
+- Track IP address and user agent
+- Filter by date range, user, action, severity
+- Export to CSV
+- Statistics dashboard
+- Retention: keep for 7 years (HIPAA compliance)
+
+Middleware: Automatically capture logs from API endpoints.
+
+```
+
+### Prompt 18: Audit Service Implementation
+
+```
+
+Create audit logging service.
+
+Create file: app/services/audit_service.py
+
+Class: AuditLogger
+
+Methods:
+
+1. log_action(user_id, user_role, action, resource_type, resource_id, details, severity, request)
+   - Log an audit event
+   - Extract IP from request
+   - Extract user agent
+   - Save to database
+
+2. log_study_access(user_id, study_id, action)
+   - Log study viewing/access
+
+3. log_measurement_operation(user_id, action, measurement_id, instance_id, details)
+   - Log measurement CRUD
+
+4. log_report_operation(user_id, action, report_id, study_id)
+   - Log report operations
+
+5. get_logs_by_study(study_id, limit=1000) -> list
+   - Get all logs for a study
+
+6. get_logs_by_user(user_id, start_date, end_date) -> list
+   - Get all logs for a user in date range
+
+7. export_logs_to_csv(filters, output_path) -> str
+   - Export filtered logs to CSV file
+   - Return file path
+
+8. cleanup_old_logs(days_to_keep=2555) # 7 years
+   - Delete logs older than 7 years
+   - Run weekly as scheduled task
+
+Features:
+
+- Automatic logging via middleware
+- Cannot modify or delete logs (append-only)
+- Indexes for fast queries
+- Severity levels for critical events
+- Context preservation (details JSON)
+
+Use this for all audit logging operations.
+
+```
+
+---
+
+## 👔 WORKLIST
+
+### Prompt 19: Worklist Endpoints
+
+```
+
+Create worklist endpoints for study assignment and tracking.
+
+Worklist: List of studies assigned to users for review.
+
+Endpoints:
+GET /api/v1/worklist - Get user's worklist
+GET /api/v1/worklist/filters - Get available filter options
+GET /api/v1/worklist/{id} - Get worklist item details
+PUT /api/v1/worklist/{id} - Update item status
+GET /api/v1/worklist/study/{study_id} - Get worklist for study
+POST /api/v1/worklist/assign - Assign study to radiologist (admin)
+
+Create Pydantic schemas:
+
+- WorklistItemResponse
+- WorklistItemUpdate
+- WorklistFilterOptions
+- WorklistAssignmentRequest
+
+Fields:
+
+- id (UUID or use study_id)
+- study_id
+- patient_id
+- patient_name
+- status (new, ongoing, completed)
+- priority (low, normal, high, urgent)
+- assigned_to_id (radiologist)
+- last_accessed (timestamp)
+- created_at
+
+Status Workflow:
+
+1. New - Just added to worklist
+2. Ongoing - Currently being reviewed
+3. Completed - Review done, report created
+
+Features:
+
+- Return only worklist items for current user (radiologist)
+- Admin can assign studies to users
+- Priority ordering (urgent > high > normal > low)
+- Filter options: status, priority, modality, date range
+- Last accessed tracking
+- Statistics: total, new, ongoing, completed
+
+Response format:
+{
+"id": "w_123",
+"study_id": "study_456",
+"patient": {"id": "P001", "name": "John Doe", "age": 45},
+"status": "new",
+"priority": "high",
+"modality": "MRI",
+"study_date": "2026-03-21",
+"series_count": 3,
+"image_count": 45
+}
+
+```
+
+---
+
+## 🚀 DEPLOYMENT & CELERY TASKS
+
+### Prompt 20: Celery Async Task Configuration (OPTIONAL - For Advanced Use)
+
+```
+
+**OPTIONAL:** Start with synchronous processing. Add Celery ONLY if you need background tasks.
+
+If you later want async DICOM processing, create files:
+
+1. app/tasks/celery_app.py - Celery app configuration
+2. app/tasks/dicom_processing_tasks.py - DICOM processing tasks
+3. app/tasks/notification_tasks.py - Email notifications (if sending emails)
+
+Requirements (when implementing Celery):
+
+- Message broker: Redis (installed locally)
+- Result backend: Redis
+- Celery library (add to requirements.txt)
+- RabbitMQ alternative to Redis (optional)
+
+Configuration:
+
+- Broker URL: redis://localhost:6379/0
+- Result backend: redis://localhost:6379/1
+- Task serializer: JSON
+- Accept content: JSON
+- Task time limit: 1 hour for DICOM processing
+- Task soft time limit: 50 minutes
+
+Example Celery Tasks (implement only if needed):
+
+1. process_dicom_upload(upload_id, file_paths, patient_id)
+   - Process uploaded DICOM files in background
+   - Extract metadata
+   - Create database records
+   - Render images
+
+2. render_image(instance_id, options)
+   - Render DICOM image with windowing
+   - Cache in Redis
+   - Return image path
+
+3. export_audit_logs(start_date, end_date, format)
+   - Export audit logs to CSV
+
+To use Celery locally:
+
+1. Install Redis
+2. Add Celery to requirements.txt
+3. Create tasks/ folder with celery configuration
+4. Run: `celery -A app.tasks.celery_app worker -l info`
+
+FOR NOW: You can skip Celery and do synchronous processing in the endpoints.
+
+```
+
+### Prompt 21: Docker Deployment Configuration (OPTIONAL - For Production Later)
+
+```
+
+**OPTIONAL:** You do NOT need Docker now. Use this only when deploying to production or a shared server.
+
+When you ARE ready for Docker production deployment, create:
+
+1. Dockerfile - FastAPI application container (for production)
+2. docker-compose.yml - Multi-container orchestration (for production)
+3. nginx.conf - Reverse proxy configuration (optional)
+
+For production, you would use:
+
+1. backend - FastAPI application (uvicorn)
+2. db - PostgreSQL 14 container
+3. redis - Redis cache container
+4. celery_worker - Celery worker for async tasks (if using Celery)
+5. flower - Celery monitoring UI (optional)
+
+BUT FOR NOW:
+
+- Skip Docker configuration
+- Run everything locally on your computer
+- Follow BACKEND_LOCAL_SETUP.md for local setup
+- Use this prompt ONLY after local development is complete and working
+
+```
+
+---
+
+## 🧪 TESTING & QUALITY
+
+### Prompt 22: Unit Tests Setup
+
+```
+
+Create unit tests for critical backend functions.
+
+Create test files:
+
+1. tests/test_auth.py - Authentication tests
+2. tests/test_users.py - User management tests
+3. tests/test_patients.py - Patient management tests
+4. tests/test_studies.py - Study management tests
+5. tests/test_measurements.py - Measurement calculation tests
+6. tests/test_dicom_processor.py - DICOM processing tests
+7. tests/conftest.py - Pytest fixtures
+
+Using pytest framework:
+
+- Fixtures for database setup/teardown
+- Mock external dependencies
+- Test both success and error cases
+- Fixtures: app, client, test_user, test_patient, test_study, test_dicom_file
+
+Test Coverage:
+
+- Authentication (login, logout, token refresh)
+- Authorization (role-based access control)
+- CRUD operations (create, read, update, delete)
+- Validations (data integrity)
+- Error handling (400, 401, 403, 404, 500)
+- Measurement calculations (distance, angle, area)
+
+Run tests: pytest -v --cov=app
+
+Include 80%+ code coverage.
+
+```
+
+### Prompt 23: API Documentation with Swagger
+
+```
+
+Create OpenAPI/Swagger documentation for FastAPI API.
+
+Requirements:
+
+- Automatic Swagger UI at /docs
+- ReDoc documentation at /redoc
+- All endpoints documented with:
+  - Description
+  - Request/response schemas
+  - Status codes
+  - Authentication requirements
+  - Error responses
+
+Features:
+
+- Example request/response bodies
+- Parameter descriptions
+- Authentication scheme (Bearer JWT)
+- Tag endpoints by resource (auth, patients, studies, etc)
+- Version in title: "DICOM Reader Backend v1.0"
+
+Use Pydantic for automatic schema generation.
+Add custom descriptions to all endpoints via docstrings.
+
+````
+
+---
+
+## 📋 IMPLEMENTATION CHECKLIST
+
+Copy this checklist and check off each item as you implement:
+
+### Phase 1: Setup
+
+- [ ] Prompt 1: Project setup & dependencies
+- [ ] Prompt 2: FastAPI main application
+- [ ] Prompt 3: Database configuration & models
+
+### Phase 2: Authentication & Security
+
+- [ ] Prompt 4: JWT authentication system
+- [ ] Prompt 5: Role-based access control
+
+### Phase 3: Core Features
+
+- [ ] Prompt 6: User management endpoints
+- [ ] Prompt 7: Patient management endpoints
+- [ ] Prompt 8: DICOM Study endpoints
+- [ ] Prompt 9: DICOM Instance/image endpoints
+
+### Phase 4: DICOM Processing
+
+- [ ] Prompt 10: DICOM upload endpoints
+- [ ] Prompt 11: DICOM processing service
+- [ ] Prompt 12: Image rendering service
+
+### Phase 5: Advanced Features
+
+- [ ] Prompt 13: Measurements endpoints
+- [ ] Prompt 14: Measurement calculation engine
+- [ ] Prompt 15: Annotations endpoints
+- [ ] Prompt 16: Report management endpoints
+- [ ] Prompt 17: Audit logging endpoints
+- [ ] Prompt 18: Audit service implementation
+- [ ] Prompt 19: Worklist endpoints
+
+### Phase 6: Async & Infrastructure (OPTIONAL - Add Later)
+
+- [ ] Prompt 20: Celery async task configuration (skip for now, add if needed)
+- [ ] Prompt 21: Docker deployment configuration (skip for now, use for production)
+
+### Phase 7: Quality & Documentation
+
+- [ ] Prompt 22: Unit tests setup
+- [ ] Prompt 23: API documentation with Swagger
+
+---
+
+## � LOCAL DATABASE SETUP (Required Before Starting)
+
+Before running the backend, you need PostgreSQL running locally:
+
+### Windows:
+
+1. Download PostgreSQL from https://www.postgresql.org/download/windows/
+2. Run installer, choose password for `postgres` user (remember it!)
+3. Choose port 5432 (default)
+4. Finish installation
+5. PostgreSQL service should auto-start
+
+### macOS:
+
+```bash
+brew install postgresql
+brew services start postgresql
+```
+
+### Linux:
+
+```bash
+sudo apt-get install postgresql
+sudo service postgresql start
+```
+
+### Create Database:
+
+For all OS, open Terminal/PowerShell and run:
+
+```powershell
+# Windows PowerShell
+psql -U postgres -c "CREATE DATABASE dicom_db;"
+
+# Or use pgAdmin (GUI tool included with PostgreSQL)
+```
+
+Set in `.env`:
+```text
+DATABASE_URL=postgresql://postgres:your_password@localhost:5432/dicom_db
+```
+
+---
+
+## �🔗 Frontend Integration
+
+After implementing backend, update your frontend:
+
+1. **Replace mock contexts with API calls**:
+   - useAuth: Call `/api/v1/auth/login`
+   - usePatients: Call `/api/v1/patients`
+   - useWorklist: Call `/api/v1/worklist`
+
+2. **Image rendering**:
+   - Change from `generateMockDICOMImage()` to `/api/v1/instances/{id}/image`
+
+3. **API client setup**:
+
+   ```typescript
+   const apiClient = axios.create({
+     baseURL: "http://localhost:8000/api/v1",
+     headers: {
+       Authorization: `Bearer ${token}`,
+     },
+   });
+````
+
+4. **Update frontend environment variables**:
+
+   ```env
+   NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+   NEXT_PUBLIC_API_BASEURL=http://localhost:8000
+   ```
+
+5. **Test the connection**:
+   - Backend running: http://localhost:8000/docs
+   - Frontend running: http://localhost:3000
+   - Try logging in (use credentials you set in backend)
+
+---
+
+## ✅ What Has Been Updated
+
+**These prompts have been updated for LOCAL PostgreSQL development (NO Docker):**
+
+✅ **Prompt 1** - Removed Docker files, added local PostgreSQL setup instructions
+✅ **Prompt 20** - Marked as OPTIONAL, explained Celery for later only
+✅ **Prompt 21** - Marked as OPTIONAL, Docker only for production
+✅ **Added Quick Start** - Shows exactly how to start using these prompts
+✅ **Added PostgreSQL Setup** - Instructions for installing and configuring locally
+✅ **All 19 core prompts** - Now tailored for local development
+
+**You should:**
+
+1. Install PostgreSQL locally FIRST
+2. Use Prompts 1-19 with Claude/ChatGPT
+3. Follow BACKEND_LOCAL_SETUP.md for commands
+4. Skip Prompts 20-21 unless you specifically need them
+
+Good luck! 🚀

@@ -487,6 +487,56 @@ export function InstanceDicomViewer({
                         </div>
                     </Card>
 
+                    {/* Custom Window/Level */}
+                    <Card className="p-4 space-y-3">
+                        <h3 className="font-semibold text-sm">Custom Window</h3>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowCustomWindow(!showCustomWindow)}
+                            className="w-full text-xs"
+                        >
+                            {showCustomWindow ? 'Hide' : 'Show'} Custom Window
+                        </Button>
+                        {showCustomWindow && (
+                            <div className="space-y-3 pt-2 border-t">
+                                <div>
+                                    <label className="text-xs font-medium text-muted-foreground">
+                                        Window Center (HU)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={customWindowCenter || ''}
+                                        onChange={(e) => setCustomWindowCenter(e.target.value ? Number(e.target.value) : null)}
+                                        placeholder="e.g., 40"
+                                        className="w-full px-2 py-1 text-xs border rounded mt-1 bg-background"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-medium text-muted-foreground">
+                                        Window Width (HU)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={customWindowWidth || ''}
+                                        onChange={(e) => setCustomWindowWidth(e.target.value ? Number(e.target.value) : null)}
+                                        placeholder="e.g., 400"
+                                        className="w-full px-2 py-1 text-xs border rounded mt-1 bg-background"
+                                    />
+                                </div>
+                                <Button
+                                    variant="default"
+                                    size="sm"
+                                    onClick={handleApplyCustomWindow}
+                                    disabled={loading || customWindowCenter === null || customWindowWidth === null}
+                                    className="w-full text-xs"
+                                >
+                                    Apply Custom Window
+                                </Button>
+                            </div>
+                        )}
+                    </Card>
+
                     {/* Current Settings Summary */}
                     <Card className="p-4 space-y-2 bg-muted/50">
                         <h3 className="font-semibold text-sm">Settings</h3>

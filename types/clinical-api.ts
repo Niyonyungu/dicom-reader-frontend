@@ -125,6 +125,39 @@ export interface DicomUploadResponse {
   }>;
 }
 
+// Upload status tracking (from backend job queue)
+export interface UploadStatusResponse {
+  upload_id: string;
+  task_id?: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  progress_percent: number;
+  uploaded_count: number;
+  failed_count: number;
+  total_count: number;
+  current_file?: string;
+  error_message?: string;
+  created_at: string;
+  completed_at?: string;
+  results?: DicomUploadResponse;
+}
+
+// File validation response
+export interface FileValidationResponse {
+  valid: boolean;
+  filename: string;
+  file_size: number;
+  error?: string;
+  warning?: string;
+}
+
+// Batch validation response
+export interface BatchValidationResponse {
+  total: number;
+  valid_count: number;
+  invalid_count: number;
+  results: FileValidationResponse[];
+}
+
 // ============================================================================
 // DICOM RENDERING & VIEWING
 // ============================================================================

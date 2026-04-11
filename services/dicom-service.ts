@@ -17,10 +17,12 @@
 
 import axios, { AxiosProgressEvent } from "axios";
 import {
-  DicomInstance,
-  DicomListResponse,
   DicomUploadResponse,
+  DicomListResponse,
   DicomListFilters,
+  UploadStatusResponse,
+  FileValidationResponse,
+  BatchValidationResponse,
 } from "@/types/clinical-api";
 import { getAccessToken } from "@/lib/token-storage";
 import { parseApiError, ApiError } from "@/lib/api-errors";
@@ -310,8 +312,210 @@ export async function getSeriesDicom(
   });
 }
 
+// ============================================================================
+// FILE VALIDATION
+// ============================================================================
+
+/**
+ * Validate DICOM files before upload
+ * 
+ * Quick validation to check files are valid DICOM before starting upload.
+ * Useful for UX feedback before triggering expensive upload process.
+ * 
+ * @param files - Files to validate
+ * @returns BatchValidationResponse with validation results
+ * @throws ApiError on validation failure
+ * 
+ * @example
+ * ```ts
+ * const fileInput = document.querySelector('input[type="file"]');
+ * const files = Array.from(fileInput.files || []);
+ * 
+ * const validation = await dicomService.validateDicom(files);
+ * console.log(`Valid: ${validation.valid_count}/${validation.total}`);
+ * 
+ * if (validation.invalid_count > 0) {
+ *   console.log('Invalid files:');
+ *   validation.results.filter(r => !r.valid).forEach(r => {
+ *     console.log(`${r.filename}: ${r.error}`);
+ *   });
+ * }
+ * ```
+ */
+export async function validateDicom(files: File[]): Promise<BatchValidationResponse> {
+  if (files.length === 0) {
+    throw new Error("No files provided for validation");
+  }
+
+  const formData = new FormData();
+  files.forEach((file) => {
+    formData.append("files", file);
+  });
+
+  const token = getAccessToken();
+
+  try {
+    const response = await axios.post<BatchValidationResponse>(
+      `${API_ROOT}/dicom/validate`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        timeout: 30000, // 30 seconds for validation
+      }
+    );
+
+    return response.data;
+  } catch (error: any) {
+    const apiError = parseApiError(error);
+    
+    if (process.env.NODE_ENV === "development" && apiError.requestId) {
+      console.error(`[DICOM Validate] Request ID: ${apiError.requestId}`);
+    }
+
+    throw apiError;
+  }
+}
+
+// ============================================================================
+// UPLOAD STATUS TRACKING
+// ============================================================================
+
+/**
+ * Check upload status with real-time progress
+ * 
+ * Poll this endpoint to get progress on an ongoing upload.
+ * Backend processes files asynchronously; use the upload_id returned
+ * from uploadDicom() to track progress.
+ * 
+ * @param uploadId - Upload ID from uploadDicom response
+ * @param taskId - Optional task ID for backend job tracking
+ * @returns UploadStatusResponse with current progress
+ * @throws ApiError on failure (404 if upload not found, 410 if expired)
+ * 
+ * @example
+ * ```ts
+ * // Start upload
+ * const uploadResponse = await dicomService.uploadDicom(123, files);
+ * const uploadId = uploadResponse.id; // if returned
+ * 
+ * // Poll for progress
+ * const pollInterval = setInterval(async () => {
+ *   const status = await dicomService.checkUploadStatus(uploadId);
+ *   console.log(`Progress: ${status.progress_percent}%`);
+ *   console.log(`Processing: ${status.current_file}`);
+ *   
+ *   if (status.status === 'completed') {
+ *     clearInterval(pollInterval);
+ *     console.log(`Done! Uploaded ${status.uploaded_count} instances`);
+ *   } else if (status.status === 'failed') {
+ *     clearInterval(pollInterval);
+ *     console.error(`Upload failed: ${status.error_message}`);
+ *   }
+ * }, 1000); // Poll every second
+ * ```
+ */
+export async function checkUploadStatus(
+  uploadId: string,
+  taskId?: string
+): Promise<UploadStatusResponse> {
+  const token = getAccessToken();
+
+  try {
+    const params = new URLSearchParams();
+    if (taskId) {
+      params.append("task_id", taskId);
+    }
+
+    const url = `${API_ROOT}/dicom/upload-status/${uploadId}${
+      params.toString() ? `?${params.toString()}` : ""
+    }`;
+
+    const response = await axios.get<UploadStatusResponse>(url, {
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+
+    return response.data;
+  } catch (error: any) {
+    const apiError = parseApiError(error);
+    
+    if (process.env.NODE_ENV === "development" && apiError.requestId) {
+      console.error(
+        `[DICOM Status] Request ID: ${apiError.requestId}`,
+        `Upload ID: ${uploadId}`
+      );
+    }
+
+    throw apiError;
+  }
+}
+
+/**
+ * Poll upload status until completion
+ * 
+ * Convenience method that polls status endpoint continuously until
+ * upload completes or fails. Returns when final state is reached.
+ * 
+ * @param uploadId - Upload ID
+ * @param onProgress - Callback for progress updates
+ * @param pollIntervalMs - Poll interval in milliseconds (default: 1000)
+ * @returns Final UploadStatusResponse (completed or failed)
+ * @throws ApiError on failure
+ * 
+ * @example
+ * ```ts
+ * try {
+ *   const finalStatus = await dicomService.waitForUpload(
+ *     uploadId,
+ *     (status) => {
+ *       console.log(`${status.progress_percent}%: ${status.current_file}`);
+ *     }
+ *   );
+ *   
+ *   if (finalStatus.status === 'completed') {
+ *     console.log(`Uploaded ${finalStatus.uploaded_count} instances`);
+ *   }
+ * } catch (error) {
+ *   console.error('Upload failed:', error.message);
+ * }
+ * ```
+ */
+export async function waitForUpload(
+  uploadId: string,
+  onProgress?: (status: UploadStatusResponse) => void,
+  pollIntervalMs: number = 1000
+): Promise<UploadStatusResponse> {
+  let status = await checkUploadStatus(uploadId);
+  
+  while (status.status === 'pending' || status.status === 'processing') {
+    if (onProgress) {
+      onProgress(status);
+    }
+
+    // Wait before next poll
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+
+    // Get updated status
+    status = await checkUploadStatus(uploadId);
+  }
+
+  // Final callback with completed state
+  if (onProgress) {
+    onProgress(status);
+  }
+
+  return status;
+}
+
 export const dicomService = {
   uploadDicom,
+  validateDicom,
+  checkUploadStatus,
+  waitForUpload,
   listDicom,
   getDicom,
   downloadDicom,

@@ -141,6 +141,22 @@ export async function getStudyAuditLogs(
 }
 
 /**
+ * Get a single audit log by ID
+ * Requires admin role
+ *
+ * @param logId - Audit log ID
+ * @returns Single audit log entry with full details
+ */
+export async function getAuditLog(logId: number): Promise<AuditLog> {
+  const token = getAccessToken();
+  const url = `/audit-logs/${logId}`;
+
+  return get<AuditLog>(url, {
+    authToken: token ?? undefined,
+  });
+}
+
+/**
  * Export audit logs as CSV
  * Requires admin role
  *

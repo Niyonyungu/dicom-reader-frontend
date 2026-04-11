@@ -59,24 +59,16 @@ function getAuthHeadersNoContent(): Record<string, string> {
  * ```
  */
 export async function getInstance(instanceId: number): Promise<DicomInstance> {
-  const token = getAccessToken();
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const headers = getAuthHeaders();
 
   try {
     const response = await fetch(`${API_ROOT}/instances/${instanceId}`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        ...headers,
-      },
+      headers,
     });
 
     if (!response.ok) {
-      const data = await response.json();
-      throw new ApiError(data.message || "Failed to fetch instance", {
-        status: response.status,
-        details: data,
-      });
+      throw new Error(`HTTP ${response.status}`);
     }
 
     return await response.json();
@@ -120,8 +112,7 @@ export async function getInstanceImageUrl(
   instanceId: number,
   params: RenderParams = {}
 ): Promise<InstanceImageResponse> {
-  const token = getAccessToken();
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const headers = getAuthHeadersNoContent();
 
   // Build query parameters
   const queryParams = new URLSearchParams();
@@ -142,9 +133,7 @@ export async function getInstanceImageUrl(
     // HEAD request to get ETag without downloading full image
     const headResponse = await fetch(url, {
       method: "HEAD",
-      headers: {
-        ...headers,
-      },
+      headers,
     });
 
     const etag = headResponse.headers.get("etag") || undefined;
@@ -190,8 +179,7 @@ export async function getInstanceImageBlob(
   instanceId: number,
   params: RenderParams = {}
 ): Promise<Blob> {
-  const token = getAccessToken();
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const headers = getAuthHeadersNoContent();
 
   const queryParams = new URLSearchParams();
   
@@ -214,9 +202,7 @@ export async function getInstanceImageBlob(
     });
 
     if (!response.ok) {
-      throw new ApiError("Failed to fetch rendered image", {
-        status: response.status,
-      });
+      throw new Error(`HTTP ${response.status}`);
     }
 
     return await response.blob();
@@ -247,24 +233,16 @@ export async function getInstanceImageBlob(
  * ```
  */
 export async function getInstanceInfo(instanceId: number): Promise<DicomInfo> {
-  const token = getAccessToken();
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const headers = getAuthHeaders();
 
   try {
     const response = await fetch(`${API_ROOT}/instances/${instanceId}/info`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        ...headers,
-      },
+      headers,
     });
 
     if (!response.ok) {
-      const data = await response.json();
-      throw new ApiError(data.message || "Failed to fetch instance info", {
-        status: response.status,
-        details: data,
-      });
+      throw new Error(`HTTP ${response.status}`);
     }
 
     return await response.json();
@@ -296,8 +274,7 @@ export async function downloadInstance(
   instanceId: number,
   filename?: string
 ): Promise<void> {
-  const token = getAccessToken();
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const headers = getAuthHeadersNoContent();
 
   try {
     const response = await fetch(`${API_ROOT}/instances/${instanceId}/dicom`, {
@@ -306,9 +283,7 @@ export async function downloadInstance(
     });
 
     if (!response.ok) {
-      throw new ApiError("Failed to download instance", {
-        status: response.status,
-      });
+      throw new Error(`HTTP ${response.status}`);
     }
 
     const blob = await response.blob();
@@ -342,7 +317,9 @@ class ImageCache {
   set(key: string, url: string, etag?: string): void {
     if (this.cache.size >= this.maxSize) {
       const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
+      if (firstKey) {
+        this.cache.delete(firstKey);
+      }
     }
     this.cache.set(key, { url, etag });
   }
