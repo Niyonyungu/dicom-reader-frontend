@@ -20,30 +20,10 @@ import {
 } from "@/types/clinical-api";
 import { getAccessToken } from "@/lib/token-storage";
 import { parseApiError } from "@/lib/api-errors";
+import { get, request } from "@/lib/api-client";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 const API_ROOT = `${BASE_URL}/api/v1`;
-
-// Helper to build auth headers safely
-function getAuthHeaders(): Record<string, string> {
-  const token = getAccessToken();
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-  return headers;
-}
-
-function getAuthHeadersNoContent(): Record<string, string> {
-  const token = getAccessToken();
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-  return headers;
-}
 
 /**
  * Get instance metadata
@@ -59,22 +39,11 @@ function getAuthHeadersNoContent(): Record<string, string> {
  * ```
  */
 export async function getInstance(instanceId: number): Promise<DicomInstance> {
-  const headers = getAuthHeaders();
+  const token = getAccessToken();
 
-  try {
-    const response = await fetch(`${API_ROOT}/instances/${instanceId}`, {
-      method: "GET",
-      headers,
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    throw parseApiError(error);
-  }
+  return get<DicomInstance>(`/instances/${instanceId}`, {
+    authToken: token || undefined,
+  });
 }
 
 /**
@@ -112,7 +81,7 @@ export async function getInstanceImageUrl(
   instanceId: number,
   params: RenderParams = {}
 ): Promise<InstanceImageResponse> {
-  const headers = getAuthHeadersNoContent();
+  const token = getAccessToken();
 
   // Build query parameters
   const queryParams = new URLSearchParams();
@@ -130,22 +99,14 @@ export async function getInstanceImageUrl(
   const url = `${API_ROOT}/instances/${instanceId}/image?${queryParams.toString()}`;
 
   try {
-    // HEAD request to get ETag without downloading full image
-    const headResponse = await fetch(url, {
-      method: "HEAD",
-      headers,
-    });
-
-    const etag = headResponse.headers.get("etag") || undefined;
-
+    // In this case, we're returning the URL for standard <img> tag usage.
+    // We'll skip the HEAD request for ETag and just return the constructed URL.
     return {
       url,
       format: params.format || "png",
-      etag,
-      cache_key: `instance_${instanceId}_${etag}`,
+      cache_key: `instance_${instanceId}`,
     };
   } catch (error) {
-    // If HEAD fails, still return the URL - client can handle rendering errors
     return {
       url,
       format: params.format || "png",
@@ -179,7 +140,7 @@ export async function getInstanceImageBlob(
   instanceId: number,
   params: RenderParams = {}
 ): Promise<Blob> {
-  const headers = getAuthHeadersNoContent();
+  const token = getAccessToken();
 
   const queryParams = new URLSearchParams();
   
@@ -193,22 +154,10 @@ export async function getInstanceImageBlob(
   if (params.flip_vertical) queryParams.append("flip_vertical", "true");
   if (params.filter && params.filter !== "none") queryParams.append("filter", params.filter);
 
-  const url = `${API_ROOT}/instances/${instanceId}/image?${queryParams.toString()}`;
-
-  try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers,
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    return await response.blob();
-  } catch (error) {
-    throw parseApiError(error);
-  }
+  return request<Blob>("GET", `/instances/${instanceId}/image?${queryParams.toString()}`, {
+    authToken: token || undefined,
+    responseType: "blob",
+  });
 }
 
 /**
@@ -233,22 +182,11 @@ export async function getInstanceImageBlob(
  * ```
  */
 export async function getInstanceInfo(instanceId: number): Promise<DicomInfo> {
-  const headers = getAuthHeaders();
+  const token = getAccessToken();
 
-  try {
-    const response = await fetch(`${API_ROOT}/instances/${instanceId}/info`, {
-      method: "GET",
-      headers,
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    throw parseApiError(error);
-  }
+  return get<DicomInfo>(`/instances/${instanceId}/info`, {
+    authToken: token || undefined,
+  });
 }
 
 /**
@@ -274,27 +212,23 @@ export async function downloadInstance(
   instanceId: number,
   filename?: string
 ): Promise<void> {
-  const headers = getAuthHeadersNoContent();
+  const token = getAccessToken();
 
   try {
-    const response = await fetch(`${API_ROOT}/instances/${instanceId}/dicom`, {
-      method: "GET",
-      headers,
+    const blob = await request<Blob>("GET", `/instances/${instanceId}/dicom`, {
+      authToken: token || undefined,
+      responseType: "blob",
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
+    // Trigger browser download
+    const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = filename || `instance_${instanceId}.dcm`;
+    link.setAttribute("download", filename || `instance_${instanceId}.dcm`);
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    link.remove();
+    window.URL.revokeObjectURL(url);
   } catch (error) {
     throw parseApiError(error);
   }

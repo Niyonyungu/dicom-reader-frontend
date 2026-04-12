@@ -79,9 +79,23 @@ export default function StudyDetailPage() {
     const [showAuditModal, setShowAuditModal] = useState(false);
     const [isArchiving, setIsArchiving] = useState(false);
 
+    // Validate studyId is a valid number
+    useEffect(() => {
+        if (isNaN(studyId)) {
+            setError("Invalid study ID");
+            setLoading(false);
+            return;
+        }
+    }, [studyId]);
+
     // Fetch study details
     useEffect(() => {
         const fetchStudyData = async () => {
+            // Skip if studyId is invalid
+            if (isNaN(studyId)) {
+                return;
+            }
+
             try {
                 setLoading(true);
                 setError(null);

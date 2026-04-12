@@ -12,6 +12,7 @@ import { AlertCircle, ArrowLeft, Edit2, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
     getPatient,
+    createPatient,
     updatePatient,
     deletePatient,
     Patient,
@@ -27,18 +28,20 @@ export default function PatientDetailPage() {
     const params = useParams();
     const { can } = useAuth();
     const patientId = params.id as string;
+    const isNew = patientId === "new";
 
     // State
     const [patient, setPatient] = useState<Patient | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!isNew);
     const [error, setError] = useState<string | null>(null);
-    const [editing, setEditing] = useState(false);
+    const [editing, setEditing] = useState(isNew);
     const [submitting, setSubmitting] = useState(false);
     const [deleting, setDeleting] = useState(false);
 
     // Form state
     const [formData, setFormData] = useState({
-        name: "",
+        patient_id: "",
+        full_name: "",
         date_of_birth: "",
         gender: "",
         contact_info: "",
@@ -51,13 +54,16 @@ export default function PatientDetailPage() {
     // Fetch patient
     useEffect(() => {
         const fetchPatient = async () => {
+            if (isNew) return;
+
             try {
                 setLoading(true);
                 setError(null);
                 const data = await getPatient(patientId);
                 setPatient(data);
                 setFormData({
-                    name: data.name,
+                    patient_id: data.patient_id || data.id,
+                    full_name: data.full_name || data.name,
                     date_of_birth: data.date_of_birth,
                     gender: data.gender || "",
                     contact_info: data.contact_info || "",
@@ -76,30 +82,39 @@ export default function PatientDetailPage() {
         if (patientId) {
             fetchPatient();
         }
-    }, [patientId]);
+    }, [patientId, isNew]);
 
-    // Handle update
-    const handleUpdate = async () => {
+    // Handle save (create or update)
+    const handleSave = async () => {
         try {
             setSubmitting(true);
             setError(null);
 
-            await updatePatient(patientId, {
-                name: formData.name,
+            const payload: any = {
+                full_name: formData.full_name,
+                name: formData.full_name, // Send both to be safe
                 date_of_birth: formData.date_of_birth,
-                gender: (formData.gender as "M" | "F" | "O") || undefined,
-                contact_info: formData.contact_info || undefined,
-                email: formData.email || undefined,
-                weight_kg: formData.weight_kg ? Number(formData.weight_kg) : undefined,
-                height_cm: formData.height_cm ? Number(formData.height_cm) : undefined,
-                medical_record_number: formData.medical_record_number || undefined,
-            });
+                gender: (formData.gender as "M" | "F" | "O") || null,
+                contact_info: formData.contact_info || null,
+                email: formData.email || null,
+                weight_kg: formData.weight_kg ? Number(formData.weight_kg) : null,
+                height_cm: formData.height_cm ? Number(formData.height_cm) : null,
+                medical_record_number: formData.medical_record_number || null,
+            };
 
-            // Refresh patient
-            const updated = await getPatient(patientId);
-            setPatient(updated);
-            setEditing(false);
-            toast.success("Patient updated successfully");
+            if (isNew) {
+                payload.patient_id = formData.patient_id;
+                const created = await createPatient(payload);
+                toast.success("Patient created successfully");
+                router.push(`/dashboard/patients/${created.id}`);
+            } else {
+                await updatePatient(patientId, payload);
+                // Refresh patient
+                const updated = await getPatient(patientId);
+                setPatient(updated);
+                setEditing(false);
+                toast.success("Patient updated successfully");
+            }
         } catch (err) {
             const message = handleApiError(err).message;
             setError(message);
@@ -164,7 +179,7 @@ export default function PatientDetailPage() {
         );
     }
 
-    if (!patient) {
+    if (!patient && !isNew) {
         return (
             <div className="p-8">
                 <Alert variant="destructive">
@@ -179,13 +194,13 @@ export default function PatientDetailPage() {
         <div className="p-8 space-y-6">
             {/* Back Button */}
             <Button
-                onClick={() => router.back()}
+                onClick={() => router.push("/dashboard/patients")}
                 variant="outline"
                 size="sm"
                 className="gap-2"
             >
                 <ArrowLeft className="h-4 w-4" />
-                Back
+                Back to Patients
             </Button>
 
             {/* Error Message */}
@@ -199,15 +214,24 @@ export default function PatientDetailPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold">{patient.name}</h1>
-                    <p className="text-muted-foreground mt-1">
-                        MRN: {patient.medical_record_number || "Not assigned"}
-                    </p>
+                    <h1 className="text-3xl font-bold">
+                        {isNew ? "Add New Patient" : (patient?.full_name || patient?.name)}
+                    </h1>
+                    {!isNew && patient && (
+                        <p className="text-muted-foreground mt-1">
+                            Patient ID: {patient.patient_id || patient.id}
+                        </p>
+                    )}
+                    {!isNew && patient && (
+                        <p className="text-muted-foreground mt-1">
+                            MRN: {patient.medical_record_number || "Not assigned"}
+                        </p>
+                    )}
                 </div>
                 <div className="flex gap-2">
-                    {can("patient.update") && (
+                    {(can("patient.update") || (isNew && can("patient.write"))) && (
                         <Button
-                            onClick={() => (editing ? handleUpdate() : setEditing(true))}
+                            onClick={() => (editing ? handleSave() : setEditing(true))}
                             disabled={submitting}
                             variant={editing ? "default" : "outline"}
                             size="sm"
@@ -221,7 +245,7 @@ export default function PatientDetailPage() {
                             {editing ? "Save" : "Edit"}
                         </Button>
                     )}
-                    {editing && (
+                    {editing && !isNew && (
                         <Button
                             onClick={() => setEditing(false)}
                             variant="outline"
@@ -230,7 +254,7 @@ export default function PatientDetailPage() {
                             Cancel
                         </Button>
                     )}
-                    {can("patient.delete") && (
+                    {!isNew && can("patient.delete") && (
                         <Button
                             onClick={handleDelete}
                             disabled={deleting}
@@ -256,20 +280,35 @@ export default function PatientDetailPage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Patient ID */}
+                        {isNew && (
+                            <div>
+                                <Label>Patient ID</Label>
+                                <Input
+                                    value={formData.patient_id}
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, patient_id: e.target.value })
+                                    }
+                                    placeholder="e.g., PAT-001"
+                                    className="mt-2"
+                                />
+                            </div>
+                        )}
+
                         {/* Name */}
                         <div>
                             <Label>Full Name</Label>
                             {editing ? (
                                 <Input
-                                    value={formData.name}
+                                    value={formData.full_name}
                                     onChange={(e) =>
-                                        setFormData({ ...formData, name: e.target.value })
+                                        setFormData({ ...formData, full_name: e.target.value })
                                     }
                                     className="mt-2"
                                 />
                             ) : (
                                 <div className="mt-2 p-3 bg-muted rounded">
-                                    {patient.name}
+                                    {patient?.full_name || patient?.name}
                                 </div>
                             )}
                         </div>
@@ -291,8 +330,12 @@ export default function PatientDetailPage() {
                                 />
                             ) : (
                                 <div className="mt-2 p-3 bg-muted rounded">
-                                    {formatDate(patient.date_of_birth)} (Age:{" "}
-                                    {calculateAge(patient.date_of_birth)})
+                                    {patient && (
+                                        <>
+                                            {formatDate(patient.date_of_birth)} (Age:{" "}
+                                            {calculateAge(patient.date_of_birth)})
+                                        </>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -315,7 +358,7 @@ export default function PatientDetailPage() {
                                 </select>
                             ) : (
                                 <div className="mt-2 p-3 bg-muted rounded">
-                                    {patient.gender ? (
+                                    {patient?.gender ? (
                                         <>
                                             {patient.gender === "M"
                                                 ? "Male"
@@ -346,7 +389,7 @@ export default function PatientDetailPage() {
                                 />
                             ) : (
                                 <div className="mt-2 p-3 bg-muted rounded">
-                                    {patient.medical_record_number || "—"}
+                                    {patient?.medical_record_number || "—"}
                                 </div>
                             )}
                         </div>
@@ -367,7 +410,7 @@ export default function PatientDetailPage() {
                                 />
                             ) : (
                                 <div className="mt-2 p-3 bg-muted rounded">
-                                    {patient.contact_info || "—"}
+                                    {patient?.contact_info || "—"}
                                 </div>
                             )}
                         </div>
@@ -386,7 +429,7 @@ export default function PatientDetailPage() {
                                 />
                             ) : (
                                 <div className="mt-2 p-3 bg-muted rounded">
-                                    {patient.email || "—"}
+                                    {patient?.email || "—"}
                                 </div>
                             )}
                         </div>
@@ -406,7 +449,7 @@ export default function PatientDetailPage() {
                                 />
                             ) : (
                                 <div className="mt-2 p-3 bg-muted rounded">
-                                    {patient.weight_kg ? `${patient.weight_kg} kg` : "—"}
+                                    {patient?.weight_kg ? `${patient.weight_kg} kg` : "—"}
                                 </div>
                             )}
                         </div>
@@ -426,7 +469,7 @@ export default function PatientDetailPage() {
                                 />
                             ) : (
                                 <div className="mt-2 p-3 bg-muted rounded">
-                                    {patient.height_cm ? `${patient.height_cm} cm` : "—"}
+                                    {patient?.height_cm ? `${patient.height_cm} cm` : "—"}
                                 </div>
                             )}
                         </div>
@@ -435,21 +478,23 @@ export default function PatientDetailPage() {
             </Card>
 
             {/* Metadata */}
-            <Card className="bg-muted/50">
-                <CardHeader>
-                    <CardTitle className="text-base">Metadata</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Created:</span>
-                        <span>{formatDate(patient.created_at)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Last Updated:</span>
-                        <span>{formatDate(patient.updated_at)}</span>
-                    </div>
-                </CardContent>
-            </Card>
+            {!isNew && patient && (
+                <Card className="bg-muted/50">
+                    <CardHeader>
+                        <CardTitle className="text-base">Metadata</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Created:</span>
+                            <span>{formatDate(patient.created_at)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Last Updated:</span>
+                            <span>{formatDate(patient.updated_at)}</span>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }

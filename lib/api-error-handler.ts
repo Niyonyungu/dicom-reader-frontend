@@ -133,6 +133,9 @@ export function handleApiError(
       // Using toast would require importing it, which we may not want here
       // Instead, just log for now
       console.error(`[API Error] ${toastType.toUpperCase()}: ${toastMessage}`);
+      if (status === 422 && apiError.details) {
+        console.error(`[API Error Details]:`, apiError.details);
+      }
     }
   }
 

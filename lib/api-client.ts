@@ -24,7 +24,7 @@ function createApiClient(): AxiosInstance {
     baseURL: apiRoot,
     timeout: 30000,
     headers: {
-      "Content-Type": "application/json",
+      // Allow axios to set Content-Type automatically based on data (JSON vs FormData)
     },
   });
 
@@ -88,9 +88,13 @@ export async function request<T = any>(
   path: string,
   options: ApiRequestOptions = {}
 ): Promise<T> {
+  // Ensure path is relative (no leading slash) to avoid axios baseURL pitfall
+  // If path starts with /, axios may treat it as relative to the domain root
+  const relativePath = path.startsWith("/") ? path.substring(1) : path;
+
   const config: AxiosRequestConfig = {
     method,
-    url: path,
+    url: relativePath,
   };
 
   // Add body for non-GET requests
@@ -115,6 +119,21 @@ export async function request<T = any>(
       ...config.headers,
       ...options.headers,
     };
+  }
+
+  // Set timeout if provided
+  if (options.timeout) {
+    config.timeout = options.timeout;
+  }
+
+  // Set responseType if provided
+  if (options.responseType) {
+    config.responseType = options.responseType;
+  }
+
+  // Set onUploadProgress if provided
+  if (options.onUploadProgress) {
+    config.onUploadProgress = options.onUploadProgress;
   }
 
   try {

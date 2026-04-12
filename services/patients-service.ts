@@ -16,7 +16,9 @@ import { getAccessToken } from "@/lib/token-storage";
 
 export interface Patient {
   id: string;
+  patient_id: string;
   name: string;
+  full_name: string;
   date_of_birth: string;
   gender?: "M" | "F" | "O";
   age?: number;
@@ -39,7 +41,9 @@ export interface PatientListResponse {
 }
 
 export interface PatientCreateRequest {
-  name: string;
+  patient_id: string;
+  full_name: string;
+  name?: string; // Legacy support
   date_of_birth: string;
   gender?: "M" | "F" | "O";
   contact_info?: string;
@@ -50,7 +54,8 @@ export interface PatientCreateRequest {
 }
 
 export interface PatientUpdateRequest {
-  name?: string;
+  full_name?: string;
+  name?: string; // Legacy support
   date_of_birth?: string;
   gender?: "M" | "F" | "O";
   contact_info?: string;

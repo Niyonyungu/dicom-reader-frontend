@@ -51,7 +51,7 @@ export function DicomUploadArea({
   const [showForm, setShowForm] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | undefined>(undefined);
   const [overallProgress, setOverallProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -73,7 +73,7 @@ export function DicomUploadArea({
   // Handle multiple files
   const handleFiles = useCallback(
     async (files: FileList) => {
-      setUploadError(null);
+      setUploadError(undefined);
       const newFiles: UploadFile[] = [];
 
       // First pass: local validation
@@ -113,14 +113,16 @@ export function DicomUploadArea({
             prev.map((f) => {
               if (!filesForValidation.includes(f.file)) return f;
 
-              const result = validation.results.find((r) => r.filename === f.file.name);
+              // Safe access to results as backend response might be empty or differently structured
+              const result = validation?.results?.find((r) => r.filename === f.file.name);
+              
               if (result?.valid) {
                 return { ...f, status: 'validated' };
               } else {
                 return {
                   ...f,
                   status: 'error',
-                  error: result?.error || 'Validation failed',
+                  error: result?.error || 'Validation failed or file rejected by server',
                 };
               }
             })
@@ -175,7 +177,7 @@ export function DicomUploadArea({
 
   const handleUploadSubmit = async (metadata: UploadMetadata) => {
     setIsUploading(true);
-    setUploadError(null);
+    setUploadError(undefined);
 
     try {
       const validatedFiles = uploadFiles
@@ -225,7 +227,8 @@ export function DicomUploadArea({
 
       // Callback on complete
       if (onUploadComplete) {
-        onUploadComplete(uploadResult.uploaded_count);
+        // Fallback to local count if backend response is missing uploaded_count
+        onUploadComplete(uploadResult?.uploaded_count ?? validatedFiles.length);
       }
 
       // Close form
@@ -259,7 +262,7 @@ export function DicomUploadArea({
 
   const handleClearAll = () => {
     setUploadFiles([]);
-    setUploadError(null);
+    setUploadError(undefined);
     setSelectedFiles([]);
   };
 

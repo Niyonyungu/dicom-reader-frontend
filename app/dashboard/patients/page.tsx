@@ -307,7 +307,7 @@ export default function PatientsPage() {
                   <TableBody>
                     {patients.items.map((patient) => (
                       <TableRow key={patient.id}>
-                        <TableCell className="font-medium">{patient.name}</TableCell>
+                        <TableCell className="font-medium">{patient.full_name || patient.name}</TableCell>
                         <TableCell>
                           {patient.age !== undefined ? patient.age : calculateAge(patient.date_of_birth)}
                         </TableCell>

@@ -20,12 +20,14 @@ import {
   DicomUploadResponse,
   DicomListResponse,
   DicomListFilters,
+  DicomInstance,
   UploadStatusResponse,
   FileValidationResponse,
   BatchValidationResponse,
 } from "@/types/clinical-api";
 import { getAccessToken } from "@/lib/token-storage";
 import { parseApiError, ApiError } from "@/lib/api-errors";
+import { post, get, del, request } from "@/lib/api-client";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 const API_ROOT = `${BASE_URL}/api/v1`;
@@ -93,20 +95,17 @@ export async function uploadDicom(
 
   // Append all files
   files.forEach((file) => {
-    formData.append("files", file);
+    formData.append("file", file);
   });
 
   const token = getAccessToken();
 
   try {
-    const response = await axios.post<DicomUploadResponse>(
-      `${API_ROOT}/dicom/upload`,
+    const response = await post<DicomUploadResponse>(
+      "/dicom/upload",
       formData,
       {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
+        authToken: token || undefined,
         onUploadProgress: (progressEvent: AxiosProgressEvent) => {
           if (options?.onProgress && progressEvent.total) {
             const percent = Math.round(
@@ -119,8 +118,9 @@ export async function uploadDicom(
       }
     );
 
-    return response.data;
+    return response;
   } catch (error: any) {
+    if (error instanceof ApiError) throw error;
     const apiError = parseApiError(error);
     
     // Log request ID in development
@@ -151,18 +151,10 @@ export async function uploadDicom(
 export async function listDicom(filters?: DicomListFilters): Promise<DicomListResponse> {
   const token = getAccessToken();
 
-  try {
-    const response = await axios.get<DicomListResponse>(`${API_ROOT}/dicom`, {
-      headers: {
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
-      params: filters,
-    });
-
-    return response.data;
-  } catch (error: any) {
-    throw parseApiError(error);
-  }
+  return get<DicomListResponse>("/dicom", {
+    authToken: token || undefined,
+    body: filters, // get() helper in api-client uses body for params
+  });
 }
 
 /**
@@ -181,20 +173,9 @@ export async function listDicom(filters?: DicomListFilters): Promise<DicomListRe
 export async function getDicom(instanceId: number): Promise<DicomInstance> {
   const token = getAccessToken();
 
-  try {
-    const response = await axios.get<DicomInstance>(
-      `${API_ROOT}/dicom/${instanceId}`,
-      {
-        headers: {
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-      }
-    );
-
-    return response.data;
-  } catch (error: any) {
-    throw parseApiError(error);
-  }
+  return get<DicomInstance>(`/dicom/${instanceId}`, {
+    authToken: token || undefined,
+  });
 }
 
 /**
@@ -216,21 +197,13 @@ export async function getDicom(instanceId: number): Promise<DicomInstance> {
 export async function downloadDicom(instanceId: number): Promise<Blob> {
   const token = getAccessToken();
 
-  try {
-    const response = await axios.get(
-      `${API_ROOT}/dicom/${instanceId}/download`,
-      {
-        headers: {
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-        responseType: "blob",
-      }
-    );
-
-    return response.data;
-  } catch (error: any) {
-    throw parseApiError(error);
-  }
+  return request<Blob>("GET", `/dicom/${instanceId}/download`, {
+    authToken: token || undefined,
+    responseType: "blob",
+    headers: {
+      Accept: "application/dicom, application/octet-stream",
+    },
+  });
 }
 
 /**
@@ -249,15 +222,9 @@ export async function downloadDicom(instanceId: number): Promise<Blob> {
 export async function deleteDicom(instanceId: number): Promise<void> {
   const token = getAccessToken();
 
-  try {
-    await axios.delete(`${API_ROOT}/dicom/${instanceId}`, {
-      headers: {
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
-    });
-  } catch (error: any) {
-    throw parseApiError(error);
-  }
+  return del(`/dicom/${instanceId}`, {
+    authToken: token || undefined,
+  });
 }
 
 /**
@@ -347,32 +314,44 @@ export async function validateDicom(files: File[]): Promise<BatchValidationRespo
     throw new Error("No files provided for validation");
   }
 
+  // Log file details for debugging
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[DICOM Validate] Validating ${files.length} files:`, 
+      files.map(f => ({ name: f.name, size: f.size, type: f.type }))
+    );
+  }
+
   const formData = new FormData();
   files.forEach((file) => {
-    formData.append("files", file);
+    formData.append("file", file);
   });
 
   const token = getAccessToken();
 
   try {
-    const response = await axios.post<BatchValidationResponse>(
-      `${API_ROOT}/dicom/validate`,
+    const response = await post<BatchValidationResponse>(
+      "/dicom/validate",
       formData,
       {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
+        authToken: token || undefined,
         timeout: 30000, // 30 seconds for validation
       }
     );
 
-    return response.data;
+    return response;
   } catch (error: any) {
+    if (error instanceof ApiError) throw error;
     const apiError = parseApiError(error);
     
-    if (process.env.NODE_ENV === "development" && apiError.requestId) {
-      console.error(`[DICOM Validate] Request ID: ${apiError.requestId}`);
+    // Log full error details for debugging
+    if (process.env.NODE_ENV === "development") {
+      console.error(`[DICOM Validate] Request failed:`, {
+        status: apiError.status,
+        errorCode: apiError.errorCode,
+        message: apiError.message,
+        details: apiError.details,
+        requestId: apiError.requestId,
+      });
     }
 
     throw apiError;

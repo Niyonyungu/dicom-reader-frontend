@@ -67,6 +67,9 @@ export interface ApiRequestOptions {
   body?: any;
   authToken?: string;
   headers?: Record<string, string>;
+  responseType?: "arraybuffer" | "blob" | "document" | "json" | "text" | "stream";
+  timeout?: number;
+  onUploadProgress?: (progressEvent: any) => void;
 }
 
 /**
